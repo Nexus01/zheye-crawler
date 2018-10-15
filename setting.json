@@ -4,8 +4,8 @@
     "proxies": [
         "No"
     ],
-    "account":"+14849189055",
-    "secret":"ryzen2200",
+    "account":"default",
+    "secret":"default",
     "thread_num": 3,
     "sleep": 1,
     "redis": {
