@@ -1,0 +1,17 @@
+# zhihu_login.py: 17
+Pillow == 5.3.0
+
+# zhihu_login.py: 15
+matplotlib == 3.0.0
+
+# zhihu_login.py: 8
+requests == 2.19.1
+
+redis == 2.10.6
+
+pymongo == 3.7.1
+
+bs4 == 0.0.1
+
+lxml == 4.2.5
+

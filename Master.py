@@ -27,11 +27,10 @@ val = json.load(open("setting.json"))
 
 # 初始化随机数种子
 random.seed(datetime.datetime.now())
-#requests.
+
 # 保存Cookies
 session=requests.session()
-#session = zhihu_login.ZhihuAccount(captcha_lang='en').session.cookies
-#session = open("cookies.txt", "r").read()
+
 
 
 
@@ -63,12 +62,8 @@ def get_my_url(session):
     """
     获取自己的主页作为起始也页面返回。
     """
-    #print(str(session))
     myself_soup = utils.get_links(
        session, "https://www.zhihu.com/settings/account")
-    """     my_url = myself_soup.find(
-        "div", {"id": "js-url-preview", "class": "url-preview"}) """
-    #thehref=re.compile(r"([\s\S]*?("https://www.zhihu.com/people/")[\s\S]*?)\")
     temp=open("temp.txt",'r+')
     accountpage = open("accountpage.txt", "w")
     accountpage = open("accountpage.txt", "r+")
@@ -76,24 +71,12 @@ def get_my_url(session):
     accountpage.write(temp.read())
     temp.close()
     accountpage.close()
-    #thehref=re.compile(r"^zhihu\.com\/people\/([/\w \.-]*)*/?$")
+
     thehref = re.compile(r"zhihu\.com\/people\/*")
-    #thehref="zhihu.com/people/ryzendog"
-    #print(myself_soup)
-    #tempsoup=open("temp.txt","w")
-    #tempsoup.writelines(str(utils.html.text))
-    #tempsoup.close()
 
-
-    #my_url = myself_soup.find(
-        #"a",{"href":"zhihu.com/people/ryzendog","type":"button","class":"Button Menu-item AppHeaderProfileMenu-item Button--plain"})
     my_url = myself_soup.find(
         text=thehref)
-        #text="zhihu.com/people/ryzendog")
-        #"div",{"href":"zhihu.com/people/ryzendog"})
-    """     if my_url is None:
-        return    
-    else:  """
+
     print("\n\nmy_url is "+my_url)
     return "https://www." + my_url
 
@@ -111,10 +94,9 @@ def get_followees(user_url,session):
     temp.close()
     for i in followees_soup.find_all("a", {"class": "UserLink-link","data-za-detail-view-element_name":"User"}):
         print("this is i "+i.get('href'))
-        #followinghref = re.compile("\/\/www\.zhihu\.com\/people\/excited-vczh")
-        #followee_url = i.find(href=followinghref)
+
         followee_url = "http:"+i.get('href')
-        #followee_url=i.get('href').replace("//","")
+#remove lots of unvaild varieties
         if followee_url not in followees_list:
             followees_list.append(followee_url)
     if followees_list:
@@ -148,7 +130,7 @@ def main_from_me():
     account = input('Please input your account\n>  ')
     secret = input("input your secret\n>  ")
     load_cookies=True
-    whether,session=zhihu_login.ZhihuAccount(captcha_lang='en').login(val['account'],val['secret'],load_cookies)
+    whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'],load_cookies) #remove captcha_lang='cn' in the argument
     print(str(session))
     my_url = get_my_url(session)
     crawl(my_url,session)
@@ -161,7 +143,7 @@ def main_from_one(start_url):
     account = input('Please input your account\n>  ')
     secret = input("input your secret\n>  ")
     load_cookies=True
-    whether,session=zhihu_login.ZhihuAccount(captcha_lang='en').login(val['account'],val['secret'], load_cookies)
+    whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'], load_cookies) #remove captcha_lang='cn' in the argument as well
     crawl(start_url)
 
 if __name__ == "__main__":
