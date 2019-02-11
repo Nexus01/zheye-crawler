@@ -21,6 +21,7 @@ import utils
 import requests
 import json
 import re
+from retrying import retry
 
 # 加载设置
 val = json.load(open("setting.json"))
@@ -65,8 +66,8 @@ def get_my_url(session):
     myself_soup = utils.get_links(
        session, "https://www.zhihu.com/settings/account")
     temp=open("temp.txt",'r+')
-    accountpage = open("accountpage.txt", "w")
-    accountpage = open("accountpage.txt", "r+")
+    accountpage = open("accountpage.txt", "w",encoding='utf-8')
+    accountpage = open("accountpage.txt", "r+",encoding='utf-8')
     accountpage.truncate()
     accountpage.write(temp.read())
     temp.close()
@@ -80,6 +81,12 @@ def get_my_url(session):
     print("\n\nmy_url is "+my_url)
     return "https://www." + my_url
 
+def get_mainpage_url():
+    mainpage_url='https://www.zhihu.com/'
+    return  mainpage_url
+def get_entrance_url():
+    entrance_url = 'https://www.zhihu.com/topic/19588914/followers'
+    return entrance_url
 
 def get_followees(user_url,session):
     """
@@ -89,7 +96,7 @@ def get_followees(user_url,session):
     print(user_followees_url)
     followees_list = []
     followees_soup = utils.get_links(session, user_followees_url)
-    temp=open("following.txt",'w')
+    temp=open("following.txt",'w',encoding='utf-8')
     temp.write(str(followees_soup.prettify()))
     temp.close()
     for i in followees_soup.find_all("a", {"class": "UserLink-link","data-za-detail-view-element_name":"User"}):
@@ -121,27 +128,76 @@ def crawl(url,session):
         next_random_url = conn.srandmember("UrlSet", 1)[0].decode("utf-8")
         crawl(next_random_url,session)
 
+def crawlmainpage(url,session):
+    print("entering crawl mainpage")
+    mainpage_soup=utils.get_links(session,url)
+    #print(mainpage_soup)
+    #print('\n')
+    mainpage_soup_str = str(mainpage_soup)
+    #encode_type = chardet.detect(mainpage_soup_str)
+    #mainpage_soup_str = mainpage_soup_str.decode(encode_type['encoding'])  # 进行相应解码，赋给原标识符（变量）
+    #mainpage_soup_str = str(mainpage_soup).replace(r'\u002F',r'/')
+#https:\u002F\u002Fwww.zhihu.com\u002Fquestion\u002F
+    #print(mainpage_soup_str)
+    firstrule=re.compile(r'https:\\u002F\\u002Fapi.zhihu.com\\u002Fquestions\\u002F[0-9]+')
+    firstmatch=re.findall(firstrule,mainpage_soup_str)
+    print('\n'+str(firstmatch).replace('\\\\u002F','/'))
+    #return firstmatch
 
+
+def crawlentpage(url, session):
+    print("entering crawl entpage\n")
+    entpage_soup = utils.get_links(session, url)
+    entpage_soup_str = str(entpage_soup)
+    with open('enterpage.txt','wt',encoding='utf-8') as ent:
+        ent.write(entpage_soup_str)
+    #print(entpage_soup_str+'\n')
+    nextrule = re.compile(r'\/people\/*')
+    #nextmatch = re.findall(nextrule, entpage_soup_str)
+    nextmatch=entpage_soup.find(text=nextrule)
+    print('\n' + str(nextmatch).replace('\\\\u002F', '/'))
+
+#@retry
 def main_from_me():
     """
     主程序，以自己的主页为起点，开始抓取。
     """
     #print(val['account'],val['secret'])
-    account = input('Please input your account\n>  ')
-    secret = input("input your secret\n>  ")
+    #account = input('Please input your account\n>  ')
+    #secret = input("input your secret\n>  ")
     load_cookies=True
-    whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'],load_cookies) #remove captcha_lang='cn' in the argument
+    attempts = 0
+    trytime  = 5
+    success = False
+    while attempts < trytime and not success:
+        try:
+            whether,session = zhihu_login.ZhihuAccount().login(val['account'], val['secret'],load_cookies)  # remove captcha_lang='cn' in the argument
+            success = True
+        except:
+            attempts += 1
+            if attempts == trytime:
+                break
+    #whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'],load_cookies) #remove captcha_lang='cn' in the argument
+    print(str(attempts) + '\n')
+    print(str(success)+'\n')
     print(str(session))
-    my_url = get_my_url(session)
-    crawl(my_url,session)
+    #my_url = get_my_url(session)
+    #crawl(my_url,session)
+    mainpage_url=get_mainpage_url()
+    entrance_url=get_entrance_url()
+    crawlmainpage(mainpage_url,session)
+    crawlentpage(entrance_url,session)
 
 
+    print('UserAgent is '+str(utils.trueheadnum)+'\n')
+
+#@retry
 def main_from_one(start_url):
     """
     主程序，以给定的主页为起点，开始抓取。如果程序因为某些原因中断的话，可以记录下最后一个URL，下一次再运行的时候可以从此处继续。
     """
-    account = input('Please input your account\n>  ')
-    secret = input("input your secret\n>  ")
+    #account = input('Please input your account\n>  ')
+    #secret = input("input your secret\n>  ")
     load_cookies=True
     whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'], load_cookies) #remove captcha_lang='cn' in the argument as well
     crawl(start_url)

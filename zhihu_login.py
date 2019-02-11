@@ -15,7 +15,12 @@ import json
 import matplotlib.pyplot as plt
 from http import cookiejar
 from PIL import Image
+import utils
+import random
 
+orifromnum=random.randint(0,2)
+#orifromnum=0
+orifromtxt='cookies'+str(orifromnum)+'.txt'
 
 class ZhihuAccount(object):
 
@@ -35,11 +40,12 @@ class ZhihuAccount(object):
         self.session = requests.session()
         self.session.headers = {
             'Host': 'www.zhihu.com',
-            'Referer': 'https://www.zhihu.com/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                          '(KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'
+            'Referer': 'https://www.zhihu.com/'#,
+            # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            #               '(KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36'
         }
-        self.session.cookies = cookiejar.LWPCookieJar(filename='./cookies.txt')
+        self.session.headers['User-Agent']=utils.allheaders[utils.trueheadnum]['User-Agent']
+        self.session.cookies = cookiejar.LWPCookieJar(filename=orifromtxt)
 
     def login(self, username=None, password=None, captcha_lang='en', load_cookies=True):
         """
@@ -53,6 +59,7 @@ class ZhihuAccount(object):
         if load_cookies and self.load_cookies():
             if self.check_login():
                 print('登录成功')
+                print('Cookies file is ' + orifromtxt + '\n')
                 return True,self.session
 
         headers = self.session.headers.copy()
@@ -79,6 +86,7 @@ class ZhihuAccount(object):
             print(json.loads(resp.text)['error']['message'])
         if self.check_login():
             print('登录成功')
+            print('Cookies file is ' + orifromtxt + '\n')
             return True,self.session
         print('登录失败')
         return False
@@ -102,7 +110,7 @@ class ZhihuAccount(object):
         """
         resp = self.session.get(self.login_url, allow_redirects=False)
         if resp.status_code == 302:
-            self.session.cookies.save()
+            #self.session.cookies.save()
             return True
         return False
 
