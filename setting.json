@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
     "user": "unknown",
     "proxy_on": true,
     "proxies": [
@@ -81,15 +80,6 @@
         "ShanghaiTech University",
         "New York University Shanghai"
     ],
-=======
-    "user": "liu",
-    "proxy_on": false,
-    "proxies": [
-        "No"
-    ],
-    "account":"default",
-    "secret":"default",
->>>>>>> 93c64dd344dd6fe2a9abda119f09344b491bfa95
     "thread_num": 3,
     "sleep": 1,
     "redis": {
@@ -98,14 +88,8 @@
     },
     "mongodb": {
         "host": "localhost",
-<<<<<<< HEAD
         "port": 27000
     },
     "dbnamenet":"zhihu",
     "colnamenet":"domainid"
-=======
-        "port": 27017
-    }
-
->>>>>>> 93c64dd344dd6fe2a9abda119f09344b491bfa95
 }
