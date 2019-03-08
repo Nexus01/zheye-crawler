@@ -14,13 +14,15 @@
 
 from Error import NoFolloweeError
 import zhihu_login
-import redis
 import random
 import datetime
 import utils
 import requests
 import json
 import re
+import time
+from bs4 import BeautifulSoup
+import Conndb
 
 # 加载设置
 val = json.load(open("setting.json"))
@@ -35,8 +37,6 @@ session=requests.session()
 
 
 print(session)
-# 连接至Redis
-conn = redis.Redis(host=val['redis']['host'], port=val['redis']['port'])
 
 
 def put_into_queue(info_list):
@@ -62,24 +62,24 @@ def get_my_url(session):
     """
     获取自己的主页作为起始也页面返回。
     """
-    myself_soup = utils.get_links(
-       session, "https://www.zhihu.com/settings/account")
-    temp=open("temp.txt",'r+')
-    accountpage = open("accountpage.txt", "w")
-    accountpage = open("accountpage.txt", "r+")
-    accountpage.truncate()
-    accountpage.write(temp.read())
-    temp.close()
-    accountpage.close()
+    myself_soup = utils.get_links(session, val['account_url'])
+    with open('../temp.txt', 'rt', encoding='utf-8') as temp:
+        with open('../accoutpage.txt', 'wt',encoding='utf-8') as accoutp:
+            accoutp.truncate()
+            accoutp.write(temp.read())
+    print(myself_soup)
+    myidrule = re.compile(r'(?<=people","id":")[0-9a-z]+')
+    myid = re.search(myidrule, str(myself_soup))
+    my_id = myid.group(0)
+    print("\n\nmy_id is "+my_id)
+    return "https://www.zhihu.com/people/" + my_id
 
-    thehref = re.compile(r"zhihu\.com\/people\/*")
-
-    my_url = myself_soup.find(
-        text=thehref)
-
-    print("\n\nmy_url is "+my_url)
-    return "https://www." + my_url
-
+def get_mainpage_url():
+    mainpage_url = val['mainpage_url']
+    return mainpage_url
+def get_entrance_url(index):
+    entrance_url = val['univer_url'][index]
+    return entrance_url
 
 def get_followees(user_url,session):
     """
@@ -89,7 +89,7 @@ def get_followees(user_url,session):
     print(user_followees_url)
     followees_list = []
     followees_soup = utils.get_links(session, user_followees_url)
-    temp=open("following.txt",'w')
+    temp=open("../following.txt", 'w', encoding='utf-8')
     temp.write(str(followees_soup.prettify()))
     temp.close()
     for i in followees_soup.find_all("a", {"class": "UserLink-link","data-za-detail-view-element_name":"User"}):
@@ -116,35 +116,116 @@ def crawl(url,session):
         test_list = get_followees(one,session)
         put_into_queue(followees)
         print(one)
-        crawl(one,session)
+        crawl(one, session)
     except NoFolloweeError:
         next_random_url = conn.srandmember("UrlSet", 1)[0].decode("utf-8")
-        crawl(next_random_url,session)
+        crawl(next_random_url, session)
+
+def crawlmainpage(url,session):
+    print("entering crawl mainpage")
+    mainpage_soup=utils.get_links(session,url)
+    #print(mainpage_soup)
+    #print('\n')
+    mainpage_soup_str = str(mainpage_soup)
+    with open('../mainpage.txt', 'wt', encoding='utf-8') as main:
+        main.write(mainpage_soup_str)
+    firstrule=re.compile(r'https:\\u002F\\u002Fapi.zhihu.com\\u002Fquestions\\u002F[0-9]+')
+    firstmatch=re.findall(firstrule, mainpage_soup_str)
 
 
-def main_from_me():
-    """
-    主程序，以自己的主页为起点，开始抓取。
-    """
-    #print(val['account'],val['secret'])
-    account = input('Please input your account\n>  ')
-    secret = input("input your secret\n>  ")
-    load_cookies=True
-    whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'],load_cookies) #remove captcha_lang='cn' in the argument
-    print(str(session))
+def crawlentpage(url, session):
+    print("entering crawl entpage\n")
+    myrule = re.compile(r'<a class=\"zu-top-nav-userinfo\" href=\"\/people\/(.*?)\">')
+    followerrule = re.compile(r'<a class=\"zg-link author-link\" href=\"\/people\/(.*?)\">')
+    nextfollowerrule=re.compile(r'<a class=\"zg-link author-link\" href=\"\\/people\\/(.*?)\">')
+    ppidrule = re.compile(r'(?<=id="pp-)[0-9a-z]+')
+    entpage_soup = utils.get_links(session, url)
+    entpage_soup_str = str(entpage_soup)
+
+    mymatch = re.findall(myrule, entpage_soup_str)
+
+    followermatch = re.findall(followerrule, entpage_soup_str)
+    ppidmatch=re.findall(ppidrule, entpage_soup_str)
+    cirnum = 0
+    while cirnum < len(followermatch):
+        try:
+            Conndb.connectdb(utils.prival['mongodbnet']['host'], utils.prival['mongodbnet']['port'], val['dbnamenet'], val['colnamenet'],followermatch[cirnum],ppidmatch[cirnum])
+        except OSError as ee:
+            print("{0}".format(ee))
+        cirnum = cirnum+1
+    print('\nmy Domainhack is' + str(mymatch)+'\n')
+    print('\nthe followers\' Domainhacks are' + str(followermatch)+'\n')
+    print('while their ppid are ' + str(ppidmatch) + '\n')
+    if len(followermatch) < 20:
+        return
+    lastonerule=re.compile(r'(?<=mi-)[0-9]+')
+    allstart = re.findall(lastonerule, entpage_soup_str)
+    try:
+        truestart = allstart[len(allstart) - 1]
+        lasttruestart = truestart
+    except IndexError as ie:
+        print("{0}".format(ie))
+        return
+    print('\nthe truestart is: '+truestart)
+    time.sleep(random.randint(5, 10))
+    postnum = 0
+    while postnum >= 0: #utils.prival['flippagenum']:
+        offsetnum = 40+postnum*20
+        startnum = truestart
+        print('offsetnum= '+str(offsetnum)+' startnum= '+str(startnum))
+        params = {"offset": str(offsetnum), "start": str(startnum)}
+        #params = 'offset='+str(offsetnum)+'&start='+startnum
+        nextentpage_soup = utils.mypost(session, url, params)
+        nextentpage_soup_str=str(nextentpage_soup)
+        nextfollowermatch=re.findall(nextfollowerrule,nextentpage_soup_str)
+        ppidmatch = re.findall(ppidrule, entpage_soup_str)
+        cirnum = 0
+        while cirnum < len(nextfollowermatch):
+            try:
+                Conndb.connectdb(utils.prival['mongodbnet']['host'], utils.prival['mongodbnet']['port'], val['dbnamenet'], val['colnamenet'], nextfollowermatch[cirnum], ppidmatch[cirnum])
+            except OSError as ee:
+                print("{0}".format(ee))
+            cirnum = cirnum + 1
+        print('\nthe followers\' Domainhacks are' + str(nextfollowermatch) + '\n')
+        print('while their ppid are '+str(ppidmatch)+'\n')
+        if len(nextfollowermatch) < 20:
+            return
+        postnum = postnum+1
+        lastonerule = re.compile(r'(?<=mi-)[0-9]+')
+        wholestart = re.findall(lastonerule, nextentpage_soup_str)
+        if len(wholestart) > 0:
+            truestart = wholestart[len(wholestart)-1]
+            if truestart == lasttruestart:
+                return
+            lasttruestart = truestart
+            print('\nthe truestart is: ' + truestart)
+        else:
+            print('not found next start')
+            return
+        time.sleep(random.randint(5, 10))
+def main_from_me(session):
     my_url = get_my_url(session)
     crawl(my_url,session)
 
-
-def main_from_one(start_url):
+def main_from_enter(session):
     """
-    主程序，以给定的主页为起点，开始抓取。如果程序因为某些原因中断的话，可以记录下最后一个URL，下一次再运行的时候可以从此处继续。
+    主程序，以自己的主页为起点，开始抓取。
     """
-    account = input('Please input your account\n>  ')
-    secret = input("input your secret\n>  ")
-    load_cookies=True
-    whether,session=zhihu_login.ZhihuAccount().login(val['account'],val['secret'], load_cookies) #remove captcha_lang='cn' in the argument as well
-    crawl(start_url)
+    entrance_url=get_entrance_url(utils.univerindex)
+    crawlentpage(entrance_url,session)
+def main_from_one(session,start_url):
+    """
+    以给定的主页为起点，开始抓取。如果程序因为某些原因中断的话，可以记录下最后一个URL，下一次再运行的时候可以从此处继续。
+    """
+    crawl(start_url,session)
 
 if __name__ == "__main__":
-    main_from_me()
+    load_cookies=True
+    whether, session = zhihu_login.ZhihuAccount().login('en', load_cookies)
+    print('login '+str(whether) + ' '+str(session))
+    #main_from_me(session)
+    main_from_enter(session)
+    print(str(utils.theusingua))
+    print('the proxy which was chosed is '+str(utils.chooseproxy))
+    print('the first chosed is '+str(val['univer_name'][utils.univerindex])+' : '+str(val['univer_url'][utils.univerindex]))
+    print('flipping '+str(utils.prival['flippagenum'])+' pages')

@@ -1,17 +1,26 @@
 # zhihu_login.py: 17
-Pillow == 5.3.0
+Pillow >= 5.0.0
 
 # zhihu_login.py: 15
-matplotlib == 3.0.0
+matplotlib >= 3.0.0
 
 # zhihu_login.py: 8
-requests == 2.19.1
+requests >= 2.19.1
 
-redis == 2.10.6
+pymongo >= 3.7.1
 
-pymongo == 3.7.1
+bs4 >= 0.0.1
 
-bs4 == 0.0.1
+lxml >= 4.2.5
 
-lxml == 4.2.5
 
+browsercookie >= 0.7.5
+
+
+fake-useragent >= 0.1.11
+
+Brotli >= 1.0.7
+
+PySocks >= 1.6.8
+
+pyexecjs >= 1.5.1
