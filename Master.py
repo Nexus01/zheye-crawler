@@ -11,7 +11,8 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-
+import os
+import sys
 from Error import NoFolloweeError
 import zhihu_login
 import random
@@ -23,6 +24,7 @@ import re
 import time
 from bs4 import BeautifulSoup
 import Conndb
+import pymongo
 
 # 加载设置
 val = json.load(open("setting.json"))
@@ -63,14 +65,17 @@ def get_my_url(session):
     获取自己的主页作为起始也页面返回。
     """
     myself_soup = utils.get_links(session, val['account_url'])
-    with open('../temp.txt', 'rt', encoding='utf-8') as temp:
-        with open('../accoutpage.txt', 'wt',encoding='utf-8') as accoutp:
-            accoutp.truncate()
-            accoutp.write(temp.read())
+    # with open('../temp.txt', 'rt', encoding='utf-8') as temp:
+    #     with open('../accoutpage.txt', 'wt',encoding='utf-8') as accoutp:
+    #         accoutp.truncate()
+    #         accoutp.write(temp.read())
     print(myself_soup)
     myidrule = re.compile(r'(?<=people","id":")[0-9a-z]+')
     myid = re.search(myidrule, str(myself_soup))
-    my_id = myid.group(0)
+    try:
+        my_id = myid.group(0)
+    except AttributeError as ae:
+        return False
     print("\n\nmy_id is "+my_id)
     return "https://www.zhihu.com/people/" + my_id
 
@@ -133,7 +138,7 @@ def crawlmainpage(url,session):
     firstmatch=re.findall(firstrule, mainpage_soup_str)
 
 
-def crawlentpage(url, session):
+def crawlentpage(url, session ,fromwhere):
     print("entering crawl entpage\n")
     myrule = re.compile(r'<a class=\"zu-top-nav-userinfo\" href=\"\/people\/(.*?)\">')
     followerrule = re.compile(r'<a class=\"zg-link author-link\" href=\"\/people\/(.*?)\">')
@@ -147,9 +152,12 @@ def crawlentpage(url, session):
     followermatch = re.findall(followerrule, entpage_soup_str)
     ppidmatch=re.findall(ppidrule, entpage_soup_str)
     cirnum = 0
+    ip = utils.prival['mongodbnet']['host']
+    port = utils.prival['mongodbnet']['port']
+    remoteclient = pymongo.MongoClient(str(ip) + ":" + str(port))
     while cirnum < len(followermatch):
         try:
-            Conndb.connectdb(utils.prival['mongodbnet']['host'], utils.prival['mongodbnet']['port'], val['dbnamenet'], val['colnamenet'],followermatch[cirnum],ppidmatch[cirnum])
+            Conndb.insertdomainid(remoteclient,val['dbnamenet'], val['colnamenet'],followermatch[cirnum],ppidmatch[cirnum], fromwhere)
         except OSError as ee:
             print("{0}".format(ee))
         cirnum = cirnum+1
@@ -178,11 +186,11 @@ def crawlentpage(url, session):
         nextentpage_soup = utils.mypost(session, url, params)
         nextentpage_soup_str=str(nextentpage_soup)
         nextfollowermatch=re.findall(nextfollowerrule,nextentpage_soup_str)
-        ppidmatch = re.findall(ppidrule, entpage_soup_str)
+        ppidmatch = re.findall(ppidrule, nextentpage_soup_str)
         cirnum = 0
         while cirnum < len(nextfollowermatch):
             try:
-                Conndb.connectdb(utils.prival['mongodbnet']['host'], utils.prival['mongodbnet']['port'], val['dbnamenet'], val['colnamenet'], nextfollowermatch[cirnum], ppidmatch[cirnum])
+                Conndb.insertdomainid(remoteclient, val['dbnamenet'], val['colnamenet'], nextfollowermatch[cirnum], ppidmatch[cirnum], fromwhere)#,val['univer_name'][num_url])
             except OSError as ee:
                 print("{0}".format(ee))
             cirnum = cirnum + 1
@@ -196,36 +204,53 @@ def crawlentpage(url, session):
         if len(wholestart) > 0:
             truestart = wholestart[len(wholestart)-1]
             if truestart == lasttruestart:
+                print('flipping ' + str(postnum) + ' pages')
                 return
             lasttruestart = truestart
             print('\nthe truestart is: ' + truestart)
         else:
             print('not found next start')
+            print('flipping ' + str(postnum) + ' pages')
             return
         time.sleep(random.randint(5, 10))
 def main_from_me(session):
     my_url = get_my_url(session)
+    #if my_url == False:
+        #restart_program()
+        #utils.theusingua = utils.ua.random
+        #main_from_me(session)
     crawl(my_url,session)
 
-def main_from_enter(session):
+def main_from_enter(session, num, fromwhere):
     """
     主程序，以自己的主页为起点，开始抓取。
     """
-    entrance_url=get_entrance_url(utils.univerindex)
-    crawlentpage(entrance_url,session)
+    entrance_url=get_entrance_url(num)
+    crawlentpage(entrance_url,session,fromwhere)
 def main_from_one(session,start_url):
     """
     以给定的主页为起点，开始抓取。如果程序因为某些原因中断的话，可以记录下最后一个URL，下一次再运行的时候可以从此处继续。
     """
     crawl(start_url,session)
 
+def restart_program():
+    """Restarts the current program.
+    Note: this function does not return. Any cleanup action (like
+    saving data) must be done before calling this function."""
+    python = sys.executable
+    os.execl(python, python, * sys.argv)
+
 if __name__ == "__main__":
     load_cookies=True
-    whether, session = zhihu_login.ZhihuAccount().login('en', load_cookies)
-    print('login '+str(whether) + ' '+str(session))
+    print(zhihu_login.acc)
+    print(zhihu_login.sec)
+    whether, session = zhihu_login.ZhihuAccount(zhihu_login.acc, zhihu_login.sec).login('en', load_cookies)
+    print('login ' + str(whether) + ' ' + str(session))
     #main_from_me(session)
-    main_from_enter(session)
-    print(str(utils.theusingua))
-    print('the proxy which was chosed is '+str(utils.chooseproxy))
-    print('the first chosed is '+str(val['univer_name'][utils.univerindex])+' : '+str(val['univer_url'][utils.univerindex]))
-    print('flipping '+str(utils.prival['flippagenum'])+' pages')
+    num_url = 0
+    while num_url < utils.univerindex:
+        main_from_enter(session, num_url, val['univer_name'][num_url])
+        print(str(utils.theusingua))
+        print('the proxy which was chosed is '+str(utils.chooseproxy))
+        print('the chosed is '+str(val['univer_name'][num_url])+' : '+str(val['univer_url'][num_url]))
+        num_url = num_url + 1

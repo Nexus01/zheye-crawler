@@ -1,6 +1,11 @@
 {
     "user": "unknown",
     "proxy_on": true,
+    "masterproxies": [
+        null,
+        {"http": "socks5://127.0.0.1:1060", "https": "socks5://127.0.0.1:1060"},
+        {"http": "socks5://127.0.0.1:1070", "https": "socks5://127.0.0.1:1070"}
+    ],
     "proxies": [
         null,
         {"http": "socks5://127.0.0.1:1080", "https": "socks5://127.0.0.1:1080"},
@@ -10,6 +15,7 @@
     "secret":"default",
     "mainpage_url":"https://www.zhihu.com",
     "account_url":"https://www.zhihu.com/settings/account",
+    "apime_url":"https://www.zhihu.com/api/v4/me",
     "univer_url":[
         "https://www.zhihu.com/topic/19571466/followers",
         "https://www.zhihu.com/topic/19583707/followers",

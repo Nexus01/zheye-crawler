@@ -21,9 +21,21 @@ from fake_useragent import UserAgent
 import datetime
 import json
 import brotli
+import re
 nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+filename = '../fakecookie.txt'
+#tempfile='../tempcookie.txt'
+lastfile='../lastcookiepath.txt'
+neednum = str(nowTime)
+cookiepath='../owncookies/cookies'+str(neednum)+'.txt'
+
 ua = UserAgent()
-theusingua=ua.random
+browverrule = re.compile(r'(?<=Chrome/)[0-9]{2}')
+while True:
+    theusingua = ua.chrome
+    browver = re.search(browverrule,str(theusingua))
+    if int(browver.group(0)) > 32:
+        break
 val = json.load(open("setting.json"))
 try:
     prival = json.load(open('../private.json'))
@@ -37,10 +49,10 @@ except OSError as err:
         }
     }
     #prival["flippagenum"] = random.randint(0, 4)
-nowproxy = val['proxies']
+nowproxy = val['masterproxies']
 chooseproxy = nowproxy[random.randint(0, len(nowproxy)-3)]
 print('the proxy which was chosed is '+str(chooseproxy)+' ')
-univerindex = random.randint(0, len(val['univer_url'])-1)
+univerindex = len(val['univer_url'])#random.randint(0, len(val['univer_url'])-1)
 COMMON_headers = {
             'Host': 'www.zhihu.com',
             'User-Agent': theusingua
@@ -65,15 +77,20 @@ def get_links(session, url, proxy = chooseproxy):
         getheaders['Referer'] = 'https://www.zhihu.com/'
         getheaders['Connection'] = 'keep-alive'
         getheaders['Upgrade-Insecure-Requests'] = '1'
-        trueresp=transbr(session, 'get', url, getheaders, chooseproxy)
+        trueresp=transbr(session, 'get', url, getheaders, proxy)
         #html = session.get(url, proxies=proxy, headers=getheaders)
         #print(html.text)
-        soup = BeautifulSoup(trueresp, 'lxml')
-        with open('../temp.txt', 'wt', encoding='utf-8') as tempsoup:
-            tempsoup.writelines(str(soup.prettify()))
-        print("get soup successfully\n")
+        try:
+            soup = BeautifulSoup(trueresp, 'lxml')
+            with open('../temp.txt', 'wt', encoding='utf-8') as tempsoup:
+                tempsoup.writelines(str(soup.prettify()))
+            print("get soup successfully\n")
+            return soup
+        except TypeError as te:
+            print('Error: len < 256\nskip ......')
+            return 'no text'
         #print(soup.prettify())
-        return soup
+
     except URLRequired:
         print("URLRequired")
         return None
@@ -106,7 +123,7 @@ def mypost(session, url, params, proxy=chooseproxy):
         'X-Xsrftoken': dictcookie['_xsrf']
     }
     try:
-        trueresp=transbr(session, 'post', url, postheaders, chooseproxy, params)
+        trueresp=transbr(session, 'post', url, postheaders, proxy, params)
         soup = BeautifulSoup(trueresp, 'lxml')
         with open('../temp.txt', 'wt', encoding='utf-8') as tempsoup:
             tempsoup.writelines(str(soup.prettify()))
@@ -128,17 +145,19 @@ def transbr(session, method, url, trueheaders, proxy, params=None):
         if response.status_code == 200:
             key = 'Content-Encoding'
             if response.headers is not None:
-                print(str(response.headers['content-encoding']))
+                print('response.headers is '+str(response.headers))
+            # if response.headers['content-type'] == 'application/json':
+            #     jsdata = json.loads(response.content)
+            #     print('this is the jsdata\n'+str(jsdata))
             if (key in response.headers and response.headers['Content-Encoding'] == 'br'):
                 data = brotli.decompress(response.content)
                 #print(data)
                 if ('\\u' in str(data)) and ('<meta charSet="utf-8"'not in str(data)):
                     print("unicode")
                     datatrue = data.decode('unicode-escape')
-                elif ('\\u' not in str(data)) and ('<meta charSet="utf-8"' in str(data)):
+                else:
                     print('utf-8')
                     datatrue = data.decode('utf-8')
-                #print(datatrue)
                 print('i am in br')
                 return datatrue
             return response.text

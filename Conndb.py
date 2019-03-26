@@ -1,13 +1,14 @@
 # !/usr/bin/python3
 import pymongo
 
-def connectdb(ip,port,dbname,colname,domain,id):
-    myclient = pymongo.MongoClient(str(ip)+":"+str(port))#远程服务器的IP和端口
-    mydb = myclient[dbname] #database
+def insertdomainid(client,dbname, colname, domain, id, fromwhere):
+    #远程服务器的IP和端口
+    mydb = client[dbname] #database
     mycol = mydb[colname] #collection
-    domainid(mycol,domain,id)
-    return
-def domainid(mycol,yu,id):
-    mylist = {"domain": yu, "id": id}
-    mycol.insert_one(mylist)
+    mylist = {"domain": domain, "ppid": id, "fromwhere": fromwhere}
+    result = mycol.find_one({'ppid': id})
+    if result:
+        mycol.update({'ppid': id},{'domain': domain, 'ppid': id, "fromwhere": fromwhere})#更新数据
+    else:
+        mycol.insert_one(mylist)
     return

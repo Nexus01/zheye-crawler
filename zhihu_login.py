@@ -16,10 +16,30 @@ import execjs
 import requests
 from PIL import Image
 import utils
+import cnn_test_en
+import cnn_test_en_cla
+import tensorflow as tf
+import random
 with open('../lastcookiepath.txt','rt') as infosource:
     lines = infosource.readlines()
     orifromtxt= lines[-1]
+accsec = json.load(open("../accsec.json"))
+sel = random.randint(0, len(accsec['account']) - 3)
+acc = accsec['account'][sel]
+sec = accsec['secret'][sel]
 
+loadornot = True
+try:
+    with open(utils.lastfile, 'rt') as infosource:
+        lines = infosource.readlines()
+        orifromtxt = lines[-1]
+except NameError as ne:
+    orifromtxt = 'not exist'
+    loadornot = False
+except FileNotFoundError as fe:
+    orifromtxt = 'not exist'
+    loadornot = False
+print('loadornot is ' + str(loadornot))
 class ZhihuAccount(object):
 
     def __init__(self, username: str = None, password: str = None):
@@ -58,6 +78,16 @@ class ZhihuAccount(object):
             print('读取 Cookies 文件')
             if self.check_login():
                 print('登录成功')
+                with open(utils.lastfile, 'wt') as tempname:
+                    tempname.writelines(utils.cookiepath)
+                personinfo = utils.get_links(self.session,utils.val['apime_url'])
+                if personinfo is not str:
+                    try:
+                        print(personinfo.text)
+                    except AttributeError as ae:
+                        print('AttributeError: \'str\' object has no attribute \'text\'')
+                else:
+                    print(personinfo)
                 return True,self.session
             print('Cookies 已过期')
 
@@ -84,10 +114,22 @@ class ZhihuAccount(object):
         data = self._encrypt(self.login_data)
         login_api = 'https://www.zhihu.com/api/v3/oauth/sign_in'
         resp = self.session.post(login_api, data=data, headers=headers)
-        if 'error' in resp.text:
-            print(json.loads(resp.text)['error'])
+        while True:
+            if 'error' in resp.text:
+                print(json.loads(resp.text)['error'])
+                print('i am here' + resp.text)
+                self.login_data.update({
+                                 'captcha': self._get_captcha(self.login_data['lang'])})
+                data = self._encrypt(self.login_data)
+                resp = self.session.post(login_api, data=data, headers=headers)
+            else:
+                break
         if self.check_login():
             print('登录成功')
+            with open(utils.lastfile, 'wt') as tempname:
+                tempname.writelines(utils.cookiepath)
+            personinfo = utils.get_links(self.session, utils.val['apime_url'])
+            print(personinfo)
             return True,self.session
         print('登录失败')
         return False
@@ -112,7 +154,7 @@ class ZhihuAccount(object):
         login_url = 'https://www.zhihu.com/signup'
         resp = self.session.get(login_url, allow_redirects=False)
         if resp.status_code == 302:
-            #self.session.cookies.save()
+            self.session.cookies.save(utils.cookiepath)
             return True
         return False
 
@@ -143,12 +185,20 @@ class ZhihuAccount(object):
         show_captcha = re.search(r'true', resp.text)
 
         if show_captcha:
+            g = tf.Graph()
+            if lang == 'cn':
+                with g.as_default():
+                    print('entering chinese captcha\n')  # cnntest_cn = cnn_test_cn.CnnTest('result/cn1')
+            else:
+                with g.as_default():
+                    cnntest_cla = cnn_test_en_cla.CnnTest('../result/en_cla')
+            try_num = 0
             put_resp = self.session.put(api)
             json_data = json.loads(put_resp.text)
             img_base64 = json_data['img_base64'].replace(r'\n', '')
-            with open('./captcha.jpg', 'wb') as f:
+            with open('../captcha.jpg', 'wb') as f:
                 f.write(base64.b64decode(img_base64))
-            img = Image.open('./captcha.jpg')
+            img = Image.open('../captcha.jpg')
             if lang == 'cn':
                 import matplotlib.pyplot as plt
                 plt.imshow(img)
@@ -158,9 +208,23 @@ class ZhihuAccount(object):
                                    'input_points': [[i[0]/2, i[1]/2] for i in points]})
             else:
                 img.show()
-                capt = input('请输入图片里的验证码：')
+                #capt = input('请输入图片里的验证码：')
+                type = cnntest_cla.cnn_test_single(img)
+                if type == 0:
+                    g1 = tf.Graph()
+                    with g1.as_default():
+                        cnntest_en = cnn_test_en.CnnTest('../result/en1')
+                else:
+                    g1 = tf.Graph()
+                    with g1.as_default():
+                        cnntest_en = cnn_test_en.CnnTest('../result/en2')
+                capt = cnntest_en.cnn_test_single(img)
+            print('Recognized Captcha, ' + str(try_num + 1) + '(times) : ' + capt)
+
+            time.sleep(random.randint(5, 10))
             # 这里必须先把参数 POST 验证码接口
             self.session.post(api, data={'input_text': capt})
+            print('resp.status_code is ' + str(resp.status_code) + ' ' + capt)
             return capt
         return ''
 
@@ -197,5 +261,6 @@ class ZhihuAccount(object):
 
 
 if __name__ == '__main__':
-    account = ZhihuAccount('', '')
-    account.login(captcha_lang='en', load_cookies=True)
+    account = ZhihuAccount(acc, sec)
+    print(acc +' ' +sec)
+    account.login(captcha_lang='en', load_cookies= loadornot)

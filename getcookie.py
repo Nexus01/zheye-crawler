@@ -39,16 +39,14 @@ def judgeleapyear(year):
     return daynumofmonth
 
 mycookiejar = browsercookie.firefox() # 读取firefox浏览器中的cookies，创建一个cookiejar对象
-filename = '../fakecookie.txt'
-tempfile='../tempcookie.txt'
-lastfile='../lastcookiepath.txt'
+
 fakecookies = mycookiejar
 getzhihurule=re.compile(r'<Cookie (_xsrf|_zap|capsion_ticket|d_c0|z_c0|q_c1|tst)=(.*?)(?=(.zhihu.com))') #[_zap|d_c0|z_c0|tgw_l7_route]
 gettgw=re.compile('(tgw_l7_route=)(.*?)(?<= for www.zhihu.com)')
-with open(filename, 'wt') as f:
+with open(utils.filename, 'wt') as f:
     f.write(str(mycookiejar))
 #设置cookie保存的文件
-with open(filename, 'rt') as f:
+with open(utils.filename, 'rt') as f:
     textcontent=f.read()
 matchobj = re.findall(getzhihurule, textcontent)
 tgwobj=re.search(gettgw,textcontent)
@@ -82,7 +80,7 @@ z_c0obj=re.search(z_c0rule,textcontent)
 #print(tgwobj.group(2))
 nexttgwobj=re.sub(r' for www.zhihu.com',"", str(tgwobj.group(2)))
 #print(nexttgwobj)
-neednum = str(utils.nowTime)
+
 fakeyear = random.randint(2018, 2020)
 daynumofmonth = judgeleapyear(fakeyear)
 fakemonth = random.randint(1, 12)
@@ -99,21 +97,21 @@ realfakesecond = standardize(fakesecond)
 nextyear = fakeyear+1
 kagashi = fakeyear+1
 realsecond = standardize(sixtycal(random.randint(0, 10), daynumofmonth, fakemonth, fakeday, fakehour, fakeminute, fakesecond))
-cookiepath='../owncookies/cookies'+str(neednum)+'.txt'
-with open(lastfile, 'wt') as tempname:
-    tempname.writelines(cookiepath)
-with open(cookiepath, 'wt') as tricookie:
+
+with open(utils.lastfile, 'wt') as tempname:
+    tempname.writelines(utils.cookiepath)
+with open(utils.cookiepath, 'wt') as tricookie:
     tricookie.write('#LWP-Cookies-2.0'+'\n')
     tricookie.write('Set-Cookie3: _zap="' + _zapobj.group(2) + '"; path="/"; domain=".zhihu.com"; path_spec; domain_dot; expires="'+str(int(fakeyear)+2)+'-'+standardize(fakemonth-1)+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; version=0' + '\n')
     tricookie.write('Set-Cookie3: capsion_ticket="\\' + capsion_ticketobj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(fakeyear)+'-'+realfakemonth+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realfakesecond+'Z"; httponly=None; version=0' + '\n')
     tricookie.write('Set-Cookie3: d_c0="\\' + d_c0obj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(int(fakeyear)+3)+'-'+standardize(fakemonth-1)+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; version=0' + '\n')
     tricookie.write('Set-Cookie3: z_c0="\\' + z_c0obj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(int(fakeyear)+1)+'-'+standardize(int((fakemonth-2)/2))+'-'+standardize(int(realfakeday)-1)+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; httponly=None; version=0' + '\n')
-with open(cookiepath, 'at') as tgw:
+with open(utils.cookiepath, 'at') as tgw:
     tgw.write(str('Set-Cookie3: tgw_l7_route='+str(nexttgwobj)+'; path="/"; domain="www.zhihu.com"; path_spec; expires="'+str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))+'Z"; version=0'+'\n'))
-with open(cookiepath, 'rt') as allcookie:
+with open(utils.cookiepath, 'rt') as allcookie:
     tgwlen=len(allcookie.readlines())
     tgwloca=int(tgwlen)-1
-with open(cookiepath, 'rt') as allcookie:
+with open(utils.cookiepath, 'rt') as allcookie:
     tgwroute=allcookie.readlines()[tgwloca]
 
 
