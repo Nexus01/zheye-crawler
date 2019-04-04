@@ -23,23 +23,37 @@ import json
 import re
 import time
 from bs4 import BeautifulSoup
-import Conndb
 import pymongo
-
+import os
+import sys
+syspath = sys.path[0]
+os.chdir(sys.path[0])
 # 加载设置
-val = json.load(open("setting.json"))
+val = json.load(open("setting.json", encoding='utf-8'))
 
 # 初始化随机数种子
 random.seed(datetime.datetime.now())
 
 # 保存Cookies
-session=requests.session()
+session = requests.session()
 
 
 
 
 print(session)
 
+def insertdomainid(client, dbname, colname, domain, id, fromwhere):
+    #远程服务器的IP和端口
+    mydb = client[dbname] #database
+    mycol = mydb[colname] #collection
+    setvalue = {'domain': domain, 'ppid': id, 'fromwhere': fromwhere}
+    #result = mycol.find_one({'ppid': id})
+    # if result:
+    #     mycol.update({'ppid': id},{'domain': domain, 'ppid': id, "fromwhere": fromwhere})#更新数据
+    # else:
+    #     mycol.insert_one(mylist)
+    mycol.update_one({'url': domain}, {'$set': setvalue}, upsert=True)
+    return
 
 def put_into_queue(info_list):
     """
@@ -157,7 +171,7 @@ def crawlentpage(url, session ,fromwhere):
     remoteclient = pymongo.MongoClient(str(ip) + ":" + str(port))
     while cirnum < len(followermatch):
         try:
-            Conndb.insertdomainid(remoteclient,val['dbnamenet'], val['colnamenet'],followermatch[cirnum],ppidmatch[cirnum], fromwhere)
+            insertdomainid(remoteclient, val['dbnamenet'], val['colnamenet'], followermatch[cirnum], ppidmatch[cirnum], fromwhere)
         except OSError as ee:
             print("{0}".format(ee))
         cirnum = cirnum+1
@@ -190,7 +204,7 @@ def crawlentpage(url, session ,fromwhere):
         cirnum = 0
         while cirnum < len(nextfollowermatch):
             try:
-                Conndb.insertdomainid(remoteclient, val['dbnamenet'], val['colnamenet'], nextfollowermatch[cirnum], ppidmatch[cirnum], fromwhere)#,val['univer_name'][num_url])
+                insertdomainid(remoteclient, val['dbnamenet'], val['colnamenet'], nextfollowermatch[cirnum], ppidmatch[cirnum], fromwhere)#,val['univer_name'][num_url])
             except OSError as ee:
                 print("{0}".format(ee))
             cirnum = cirnum + 1

@@ -22,6 +22,8 @@ import datetime
 import json
 import brotli
 import re
+import os
+import sys
 nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 filename = '../fakecookie.txt'
 #tempfile='../tempcookie.txt'
@@ -36,9 +38,11 @@ while True:
     browver = re.search(browverrule,str(theusingua))
     if int(browver.group(0)) > 32:
         break
-val = json.load(open("setting.json"))
+syspath=sys.path[0]
+os.chdir(sys.path[0])
+val = json.load(open('setting.json', encoding='utf-8'))
 try:
-    prival = json.load(open('../private.json'))
+    prival = json.load(open('../private.json', encoding='utf-8'))
 except OSError as err:
     print("OS error: {0}".format(err))
     prival = {

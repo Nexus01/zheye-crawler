@@ -20,17 +20,21 @@ import cnn_test_en
 import cnn_test_en_cla
 import tensorflow as tf
 import random
-with open('../lastcookiepath.txt','rt') as infosource:
+import os
+import sys
+syspath=sys.path[0]
+os.chdir(sys.path[0])
+with open('../lastcookiepath.txt','rt',encoding='utf-8') as infosource:
     lines = infosource.readlines()
     orifromtxt= lines[-1]
-accsec = json.load(open("../accsec.json"))
-sel = random.randint(0, len(accsec['account']) - 3)
+accsec = json.load(open("../private.json",encoding='utf-8'))
+sel = random.randint(0, len(accsec['account']) - 1)
 acc = accsec['account'][sel]
 sec = accsec['secret'][sel]
 
 loadornot = True
 try:
-    with open(utils.lastfile, 'rt') as infosource:
+    with open(utils.lastfile, 'rt',encoding='utf-8') as infosource:
         lines = infosource.readlines()
         orifromtxt = lines[-1]
 except NameError as ne:
@@ -78,7 +82,7 @@ class ZhihuAccount(object):
             print('读取 Cookies 文件')
             if self.check_login():
                 print('登录成功')
-                with open(utils.lastfile, 'wt') as tempname:
+                with open(utils.lastfile, 'wt',encoding='utf-8') as tempname:
                     tempname.writelines(utils.cookiepath)
                 personinfo = utils.get_links(self.session,utils.val['apime_url'])
                 if personinfo is not str:
@@ -126,7 +130,7 @@ class ZhihuAccount(object):
                 break
         if self.check_login():
             print('登录成功')
-            with open(utils.lastfile, 'wt') as tempname:
+            with open(utils.lastfile, 'wt',encoding='utf-8') as tempname:
                 tempname.writelines(utils.cookiepath)
             personinfo = utils.get_links(self.session, utils.val['apime_url'])
             print(personinfo)
@@ -201,13 +205,13 @@ class ZhihuAccount(object):
             img = Image.open('../captcha.jpg')
             if lang == 'cn':
                 import matplotlib.pyplot as plt
-                plt.imshow(img)
+                #plt.imshow(img)
                 print('点击所有倒立的汉字，按回车提交')
                 points = plt.ginput(7)
                 capt = json.dumps({'img_size': [200, 44],
                                    'input_points': [[i[0]/2, i[1]/2] for i in points]})
             else:
-                img.show()
+                #img.show()
                 #capt = input('请输入图片里的验证码：')
                 type = cnntest_cla.cnn_test_single(img)
                 if type == 0:

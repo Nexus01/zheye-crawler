@@ -43,18 +43,18 @@ mycookiejar = browsercookie.firefox() # 读取firefox浏览器中的cookies，�
 fakecookies = mycookiejar
 getzhihurule=re.compile(r'<Cookie (_xsrf|_zap|capsion_ticket|d_c0|z_c0|q_c1|tst)=(.*?)(?=(.zhihu.com))') #[_zap|d_c0|z_c0|tgw_l7_route]
 gettgw=re.compile('(tgw_l7_route=)(.*?)(?<= for www.zhihu.com)')
-with open(utils.filename, 'wt') as f:
+with open(utils.filename, 'wt', encoding='utf-8') as f:
     f.write(str(mycookiejar))
 #设置cookie保存的文件
-with open(utils.filename, 'rt') as f:
+with open(utils.filename, 'rt', encoding='utf-8') as f:
     textcontent=f.read()
 matchobj = re.findall(getzhihurule, textcontent)
-tgwobj=re.search(gettgw,textcontent)
+tgwobj=re.search(gettgw, textcontent)
 savetgw=tgwobj
 tgwnum=0
 while(True):
     try:
-        tgwobj = re.search(gettgw,str(tgwobj.group(2)))
+        tgwobj = re.search(gettgw, str(tgwobj.group(2)))
         tgwnum = tgwnum+1
     except AttributeError:
         break
@@ -98,20 +98,20 @@ nextyear = fakeyear+1
 kagashi = fakeyear+1
 realsecond = standardize(sixtycal(random.randint(0, 10), daynumofmonth, fakemonth, fakeday, fakehour, fakeminute, fakesecond))
 
-with open(utils.lastfile, 'wt') as tempname:
+with open(utils.lastfile, 'wt', encoding='utf-8') as tempname:
     tempname.writelines(utils.cookiepath)
-with open(utils.cookiepath, 'wt') as tricookie:
+with open(utils.cookiepath, 'wt', encoding='utf-8') as tricookie:
     tricookie.write('#LWP-Cookies-2.0'+'\n')
     tricookie.write('Set-Cookie3: _zap="' + _zapobj.group(2) + '"; path="/"; domain=".zhihu.com"; path_spec; domain_dot; expires="'+str(int(fakeyear)+2)+'-'+standardize(fakemonth-1)+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; version=0' + '\n')
     tricookie.write('Set-Cookie3: capsion_ticket="\\' + capsion_ticketobj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(fakeyear)+'-'+realfakemonth+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realfakesecond+'Z"; httponly=None; version=0' + '\n')
     tricookie.write('Set-Cookie3: d_c0="\\' + d_c0obj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(int(fakeyear)+3)+'-'+standardize(fakemonth-1)+'-'+realfakeday+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; version=0' + '\n')
     tricookie.write('Set-Cookie3: z_c0="\\' + z_c0obj.group(2) + '\\""; path="/"; domain=".zhihu.com"; path_spec; expires="'+str(int(fakeyear)+1)+'-'+standardize(int((fakemonth-2)/2))+'-'+standardize(int(realfakeday)-1)+' '+realfakehour+':'+realfakeminute+':'+realsecond+'Z"; httponly=None; version=0' + '\n')
-with open(utils.cookiepath, 'at') as tgw:
+with open(utils.cookiepath, 'at', encoding='utf-8') as tgw:
     tgw.write(str('Set-Cookie3: tgw_l7_route='+str(nexttgwobj)+'; path="/"; domain="www.zhihu.com"; path_spec; expires="'+str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))+'Z"; version=0'+'\n'))
-with open(utils.cookiepath, 'rt') as allcookie:
+with open(utils.cookiepath, 'rt', encoding='utf-8') as allcookie:
     tgwlen=len(allcookie.readlines())
     tgwloca=int(tgwlen)-1
-with open(utils.cookiepath, 'rt') as allcookie:
+with open(utils.cookiepath, 'rt', encoding='utf-8') as allcookie:
     tgwroute=allcookie.readlines()[tgwloca]
 
 
