@@ -12,9 +12,14 @@ import os
 import json
 from fake_useragent import UserAgent
 import sys
-import zhihu_login
+import base64
+from PIL import Image
+import cnn_test_en
+import cnn_test_en_cla
+import tensorflow as tf
+onlyapi = False
 lightout = False
-threshold = 25
+threshold = 50
 
 
 def forgeua():
@@ -34,8 +39,8 @@ def owndelete(thevalue, valuename, *ipport):
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
         myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient['zhihu']  # shujuku
-    mycol = mydb[valuename]  # jihe
+    mydb = myclient['zhihu']
+    mycol = mydb[valuename]
     myquery = {valuename: thevalue}
     mycol.delete_one(myquery)
 
@@ -72,13 +77,13 @@ def chooseproxy(proxypath):
     print('The proxy chosed is ' + str(chosedproxy))
     return chosedproxy
 
-def check(urltoken, *ipport):
+def check(urltoken, urlcol, *ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
         myclient = pymongo.MongoClient("mongodb://localhost:27017/")
     mydb = myclient['zhihu']
-    mycol = mydb['CrawledUrl']
+    mycol = mydb[urlcol]
     myquery = {'url': urltoken}
     mydoc = mycol.find(myquery)
     checkexist = {}
@@ -121,10 +126,7 @@ def pickyu(ip, port):
     mycol = mydb["NewUrl"]  # jihe
     betheone = (mycol.find_one())['url']
     return betheone
-    # list = []
-    # for y in mycol.find({}, {"_id": 0, "NewUrl": 1}):
-    #     list.append(y)
-    # return list
+
 
 
 def Savedb(thekey, thevalue, keyname, valuename, *ipport):
@@ -148,6 +150,13 @@ def CrawlingNum(thekey, thevalue, keyname, valuename, ip, port):
     # db.NewUrl.updateOne({'NewUrl': 'luosheng'}, {'$set': {'url': 'luosheng'}}, upsert=true)
     return
 
+def file_name(file_dir):
+    L = []
+    for root, dirs, files in os.walk(file_dir):
+        for file in files:
+            if os.path.splitext(file)[1] == '.gif':
+                L.append(os.path.join(root, file))
+    return L
 
 def gettopics(url, fakeua, fullproxies, needcookies):
     global originua
@@ -163,8 +172,12 @@ def gettopics(url, fakeua, fullproxies, needcookies):
             else:
                 headers['User-Agent'] = originua
             resp = requests.get(
-                'https://www.zhihu.com/api/v4/members/' + url + '/following-topic-contributions?include=data[*].topic.introduction&offset=0&limit=100',
+                'https://www.zhihu.com/api/v4/members/' + url + '/following-topic-contributions?include=data[*].topic.introduction&offset=0&limit=20',
                 headers=headers, proxies=realproxy, cookies=needcookies)
+            if '安全验证' in resp.content.decode('utf-8'):
+                hackcapt(headers['User-Agent'], realproxy)
+                print('hack successfully')
+                resp = requests.get('https://www.zhihu.com/api/v4/members/' + url + '/following-topic-contributions?include=data[*].topic.introduction&offset=0&limit=20', headers=headers, proxies=realproxy, cookies=needcookies)
             break
         except requests.exceptions.ConnectionError:
             realproxy = None
@@ -182,9 +195,6 @@ def gettopics(url, fakeua, fullproxies, needcookies):
     num_list = []
     offset = 0
     while totals > 0:
-        # headers['User-Agent'] = forgeua()
-        # realproxy = chooseproxy(fullproxies)
-        time.sleep(random.randint(5, 10))
         while True:
             try:
                 if fakeua:
@@ -193,7 +203,12 @@ def gettopics(url, fakeua, fullproxies, needcookies):
                     headers['User-Agent'] = originua
                 resp = requests.get(
                     'https://www.zhihu.com/api/v4/members/' + url + '/following-topic-contributions?include=data[*].topic.introduction&offset=' + str(
-                        offset) + '&limit=100', headers=headers, proxies=realproxy, cookies = needcookies)
+                        offset) + '&limit=20', headers=headers, proxies=realproxy, cookies = needcookies)
+                if '安全验证' in resp.content.decode('utf-8'):
+                    hackcapt(headers['User-Agent'], realproxy)
+                    print('hack successfully')
+                    resp = requests.get('https://www.zhihu.com/api/v4/members/' + url + '/following-topic-contributions?include=data[*].topic.introduction&offset=' + str(
+                        offset) + '&limit=20', headers=headers, proxies=realproxy, cookies=needcookies)
                 break
             except requests.exceptions.ConnectionError:
                 realproxy = None
@@ -245,6 +260,10 @@ def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
             else:
                 headers['User-Agent'] = originua
             response = requests.get(user_following_url, headers=headers, proxies=realproxy, cookies=needcookies)
+            if '安全验证' in response.content.decode('utf-8'):
+                hackcapt(headers['User-Agent'], realproxy)
+                print('hack successfully')
+                response = requests.get(user_following_url, headers=headers, proxies=realproxy, cookies=needcookies)
             break
         except requests.exceptions.ConnectionError:
             realproxy = None
@@ -290,7 +309,7 @@ def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
                         sys.exit(0)
                 user_following_url = "https://www.zhihu.com/people/" + url + "/following?page=" + str(url_number)
                 # headers['User-Agent'] = forgeua()
-                time.sleep(random.randint(5, 10))
+                time.sleep(random.randint(1, 5))
                 while True:
                     try:
                         if fakeua:
@@ -298,6 +317,11 @@ def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
                         else:
                             headers['User-Agent'] = originua
                         response = requests.get(user_following_url, headers=headers, proxies=realproxy, cookies=needcookies )
+                        if '安全验证' in response.content.decode('utf-8'):
+                            hackcapt(headers['User-Agent'], realproxy)
+                            print('hack successfully')
+                            response = requests.get(user_following_url, headers=headers, proxies=realproxy,
+                                                    cookies=needcookies)
                         break
                     except requests.exceptions.ConnectionError:
                         realproxy = None
@@ -310,8 +334,11 @@ def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
                 newurl_id_list = []
                 for i in info:
                     if i:
-                        mydoc = check(i, remoteip, remoteport)  # 要改
-                        if not mydoc:
+                        mydoc1 = check(i, 'CrawledUrl', remoteip, remoteport)
+                        mydoc2 = check(i, 'NextUrl', remoteip, remoteport)
+                        mydoc3 = check(i, 'PrivacyUrl', remoteip, remoteport)
+                        mydoc4 = check(i, 'CancelUrl', remoteip, remoteport)
+                        if not (mydoc1 or mydoc2 or mydoc3 or mydoc4):
                             # user_following_url = "https://www.zhihu.com/people/" + i
                             # headers['User-Agent'] = forgeua()
                             # time.sleep(random.randint(1, 5))
@@ -337,7 +364,7 @@ def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
                             # Savedb(i, i, 'url', 'PrivacyUrl', remoteip, remoteport)
 
                     # for url in newurl_id_list:
-                    # Savedb(url, url, 'url', 'NewUrl', remoteip, remoteport)  # 要改
+                    # Savedb(url, url, 'url', 'NewUrl', remoteip, remoteport)
 
                 url_number = url_number + 1
             return True
@@ -378,6 +405,10 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
             else:
                 headers['User-Agent'] = originua
             response = requests.get(user_followers_url, headers=headers, proxies=realproxy, cookies=needcookies)
+            if '安全验证' in response.content.decode('utf-8'):
+                hackcapt(headers['User-Agent'], realproxy)
+                print('hack successfully')
+                response = requests.get(user_followers_url, headers=headers, proxies=realproxy, cookies=needcookies)
             break
         except requests.exceptions.ConnectionError:
             realproxy = None
@@ -387,8 +418,6 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
     # print(next)
     if 'ProfileMainPrivacy-mainContentText' not in next:
         if 'ProfileLockStatus-title' not in next:
-            # follower_url = re.compile(r'\"url\":\"http://www.zhihu.com/people/(.*?)\"')
-            # url_list_number = re.compile(r'Button--plain\">(.*?)</button><button type=\"button\" class="Button PaginationButton PaginationButton-next Button--plain\">')
             url_list_number = re.compile(r'Button PaginationButton Button--plain">([0-9]+)</button>')
             # info = re.findall(follower_url,next)
             number_info = re.findall(url_list_number, next)
@@ -423,7 +452,7 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
                         sys.exit(0)
                 user_followers_url = "https://www.zhihu.com/people/" + url + "/followers?page=" + str(url_number)
                 # headers['User-Agent'] = forgeua()
-                time.sleep(random.randint(5, 10))
+                time.sleep(random.randint(1, 5))
                 while True:
                     try:
                         if fakeua:
@@ -431,6 +460,10 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
                         else:
                             headers['User-Agent'] = originua
                         response = requests.get(user_followers_url, headers=headers, proxies=realproxy, cookies=needcookies)
+                        if '安全验证' in response.content.decode('utf-8'):
+                            hackcapt(headers['User-Agent'], realproxy)
+                            print('hack successfully')
+                            response = requests.get(user_followers_url, headers=headers, proxies=realproxy, cookies=needcookies)
                         break
                     except requests.exceptions.ConnectionError:
                         realproxy = None
@@ -439,21 +472,13 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
                 # print(next)
                 followers_url = re.compile(r'\"urlToken\":\"([0-9a-zA-Z\-_]+)\",\"id\":\"')
                 info = re.findall(followers_url, next)
-                # del info[0]
-                newurl_id_list = []
                 for i in info:
                     if i:
-                        mydoc = check(i, remoteip, remoteport)  # 要改
-                        if not mydoc:
-                            # user_followers_url = "https://www.zhihu.com/people/" + i
-                            # headers['User-Agent'] = forgeua()
-                            # response = requests.get(user_followers_url, headers=headers, proxies=realproxy)
-                            # next = response.text.replace(r'\u002F', r'/')
-                            # if 'ProfileMainPrivacy-mainContentText' not in next:
-                            # if 'ProfileLockStatus-title' not in next:
-                            # followers_url = re.compile(r'\",\"urlToken\":\"(.*?)\",\"name\":\"')
-                            # token_info = re.findall(followers_url, next)
-                            # i = token_info
+                        mydoc1 = check(i, 'CrawledUrl', remoteip, remoteport)
+                        mydoc2 = check(i, 'NextUrl', remoteip, remoteport)
+                        mydoc3 = check(i, 'PrivacyUrl', remoteip, remoteport)
+                        mydoc4 = check(i, 'CancelUrl', remoteip, remoteport)
+                        if not (mydoc1 or mydoc2 or mydoc3 or mydoc4):
                             i = str(i).strip('[\']')
                             #print(i)
                             while True:
@@ -464,8 +489,8 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
                                     continue
                 url_number = url_number + 1
 
-            Savedb(url, url, 'url', 'CrawledUrl', remoteip, remoteport)  # 要改
-            owndelete(url, 'CrawlingUrl', remoteip, remoteport)  # 要改
+            Savedb(url, url, 'url', 'CrawledUrl', remoteip, remoteport)
+            owndelete(url, 'CrawlingUrl', remoteip, remoteport)
             if lightout:
                 if checktime('22:30', '23:59'):
                     sys.exit(0)
@@ -477,6 +502,142 @@ def getfollowers(url, fakeua, fullproxies, needcookies, *ipport):
         Savedb(url, url, 'url', 'PrivacyUrl', remoteip, remoteport)
         owndelete(url, 'CrawlingUrl', remoteip, remoteport)
         # SavePrivacyUrl(url,url)
+
+def hackcapt(usa,hackpro):
+    wwwheaders = {
+        'Host': 'www.zhihu.com',
+        'User-Agent': usa
+    }
+    apiheaders = {
+        'Host': 'api.zhihu.com',
+        'User-Agent': usa
+    }
+    nextheaders = {
+        'Host': 'www.zhihu.com',
+        'User-Agent': usa,
+        'Accept': '*/*',
+        'Accept - Language': 'en-US,en;q=0.5',
+        'Accept - Encoding': 'gzip,deflate,br',
+        'x-requested-with': 'fetch',
+        'content-type': 'application/json',
+        'Origin': 'https://www.zhihu.com',
+        'Content - Length': '18',
+        'Connection': 'keep-alive',
+        'TE': 'Trailers'
+    }
+    safeurl = 'https://www.zhihu.com/account/unhuman?type=unhuman&message=系统监测到您的网络环境存在异常，为保证您的正常访问，请输入验证码进行验证。&need_login=true'
+    capturl = 'https://www.zhihu.com/api/v4/anticrawl/captcha_appeal'
+    guesturl = 'https://www.zhihu.com/api/v3/explore/guest/feeds?limit=1'
+    topstoryurl = 'https://www.zhihu.com/api/v3/feed/topstory/hot-list-wx?limit=1'
+    apitopurl = 'https://api.zhihu.com/topstory'
+    testnum = random.randint(0, 1)
+    if testnum == 0:
+        testurl = guesturl
+    else:
+        testurl = topstoryurl
+    session = requests.session()
+    try_num = 0
+    #resp = session.get(testnet, headers=apiheaders)
+    #print(resp.content.decode('utf-8'))
+    #valapi = json.loads(resp.content, encoding='utf-8')
+    while True:
+        try:
+            resp0 = session.get(apitopurl,headers=apiheaders,proxies=hackpro)
+            if 'error' not in str(resp0.content):
+                print(json.loads(resp0.content))
+                break
+            os.chdir(sys.path[0])
+            # print(sys.path[0])
+
+            resp1 = session.get(safeurl, headers=wwwheaders, proxies=hackpro)
+            time.sleep(random.randint(1, 10))
+            nowTime = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            imgdir = '../capttemp'
+            imgpath = '../capttemp/captcha' + str(nowTime) + '.gif'
+            #print(resp1.content.decode('utf-8'))
+            # resp1con=json.loads(resp1.content,encoding='utf-8')
+            #print(resp1.content.decode('utf-8'))
+            resp2 = session.get(capturl, headers=wwwheaders, proxies=hackpro)
+            #print(resp2.content)
+            resp2con = json.loads(resp2.content)
+            #print(resp2con)
+            img_base64 = resp2con['img_base64'].replace(r'\n', '')
+            #print(img_base64)
+            if not os.path.exists(imgdir):
+                os.mkdir(imgdir)
+            with open(imgpath, 'wb+') as f:
+                f.write(base64.b64decode(img_base64))
+            print('middle open')
+            g = tf.Graph()
+            with g.as_default():
+                cnntest_cla = cnn_test_en_cla.CnnTest('../result/en_cla')
+            try_num = 0
+            try:
+                img = Image.open(imgpath)
+            #img.show()
+                type = cnntest_cla.cnn_test_single(img)
+                if type == 0:
+                    g1 = tf.Graph()
+                    with g1.as_default():
+                        cnntest_en = cnn_test_en.CnnTest('../result/en1')
+                        entype = '1'
+                else:
+                    g1 = tf.Graph()
+                    with g1.as_default():
+                        cnntest_en = cnn_test_en.CnnTest('../result/en2')
+                        entype = '2'
+                capt = cnntest_en.cnn_test_single(img)
+                #print('Recognized Captcha, ' + str(try_num + 1) + '(times) : ' + capt)
+                # 返回正确与否
+                #img.show()
+                img.close()
+            except IOError:
+                continue
+            os.remove(imgpath)
+            try_num += 1
+            print('Recognized Captcha, ' + str(try_num) + '(times) : ' + capt)
+            params = json.dumps({"captcha": capt})
+            #print(params)
+            time.sleep(random.randint(5, 10))
+            resp3 = session.post(capturl, headers=nextheaders, data=params.encode("utf-8").decode("latin1"), proxies=hackpro)
+            print('resp.status_code is ' + str(resp3.status_code) + ' ' + capt)
+            print(resp3.content.decode('utf-8'))
+            resp4 = requests.get(testurl, headers=wwwheaders, proxies=hackpro)
+            if resp4.status_code == 200:
+                if 'error' not in str(resp4.content):
+                    print(resp4.content.decode('utf-8'))
+                    print('not trigger safety verify\nhave hacked the anticrawl successfully')
+                    thefilenamelist = file_name('../source/captcha_data/en' + str(entype))
+                    T = []
+                    if not os.path.exists('../source/captcha_data'):
+                        os.mkdir('../source/captcha_data')
+                        os.mkdir('../source/captcha_data/en1')
+                        os.mkdir('../source/captcha_data/en2')
+                        print('mkdir success')
+                    bignumrule = re.compile(r'../source/captcha_data/en' + str(entype) + '/([0-9]+)_[0-9a-zA-Z]{4}.gif')
+                    for turn in thefilenamelist:
+                        foundname = re.match(bignumrule, turn)
+                        T.append(str(foundname.groups()[0]))
+                            # print(foundname.groups()[0])
+                    try:
+                        tmax = T[0]
+                    except IndexError:
+                        tmax = -1
+                    for t in T:
+                        # ttemp = t
+                        if int(tmax) < int(t):
+                            tmax = t
+                    print('max is ' + str(tmax))
+                    nextnum = int(tmax) + 1
+                    print('entype is : en' + str(entype))
+                        #        print(type(nextnum))
+                    with open('../source/captcha_data/en' + str(entype) + '/' + str(nextnum) + '_' + str(capt) + '.gif', 'wb+') as newmatch:
+                            newmatch.write(base64.b64decode(img_base64))
+                    print('saveing the matched captcha and content')
+                    break
+        except BaseException as be:
+            print(be)
+            continue
 
 
 def get_content(url, fakeua , fullproxies,needcookies, *ipport):
@@ -500,12 +661,29 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
             else:
                 headers['User-Agent'] = originua
             resp = requests.get('https://api.zhihu.com/people/' + url, headers=headers, proxies=realproxy, cookies=needcookies)
+            try:
+                respcon=resp.content.decode('utf-8')
+                #print(respcon)
+                if '您当前请求存在异常，暂时限制本次访问' in str(respcon):
+                    print('您当前请求存在异常，暂时限制本次访问')
+                    break
+                if '40352' in str(json.loads(respcon)['error']['code']):
+                    print('trigger safety verify')
+                    hackcapt(headers['User-Agent'], realproxy)
+                    print('hack successfully')
+                    resp = requests.get('https://api.zhihu.com/people/' + url, headers=headers, proxies=realproxy,
+                                        cookies=needcookies)
+            except KeyError:
+                pass
             break
         except requests.exceptions.ConnectionError:
             realproxy = None
             continue
     print(str(resp.headers['content-type']))
-    valapi = json.loads(resp.content)
+    try:
+        valapi = json.loads(resp.content)
+    except JSONDecodeError:
+        return False
     # print(val)
     locabool = False
     busibool = False
@@ -637,22 +815,14 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
             Savedb(url, favorited_count, 'url', 'favorited_count')
             Savedb(url, voteup_count, 'url', 'voteup_count')
             Savedb(url, thanked_count, 'url', 'thanked_count')
-            gettopics(url, fakeua ,allproxies ,needcookies)
+            gettopics(url, fakeua, allproxies, needcookies)
+            judge = 'chosed'
         else:
+            judge = 'not chosed'
             print('not be chosed')
-        judge = True
+        Savedb(url, url, 'url', 'CrawledUrl', remoteip, remoteport)
     except KeyError:
-        try:
-            unhuman = valapi['error']['code']
-            if unhuman == 40352:
-                print('trigger safety verify')
-                Savedb(url, url, 'url', 'NextUrl', remoteip, remoteport)
-                whether, session = zhihu_login.ZhihuAccount(zhihu_login.acc, zhihu_login.sec).login('en', True)
-                print('login '+str(whether))
-                return session.cookies
-        except BaseException:
-                pass
-        print('here')
+        print('Putting it into CancelUrl')
         Savedb(url, url, 'url', 'CancelUrl', remoteip, remoteport)
         judge = False
     return judge
@@ -674,38 +844,30 @@ if __name__ == "__main__":
     netip = str(val['mongodbnet']['host'])
     netport = str(val['mongodbnet']['port'])
     thecookies = None
-    #thefirst = pickyu(netip,netport)
-    #lists = pickyu(netip, netport)
-    # print(lists)
-    #yu = re.compile(r'\'NewUrl\': \'(.*?)\'')
-    try:
-        crawlingcheck = checkcrawling('num', machinenum, netip, netport)
-    except UnboundLocalError:
-        crawlingcheck = False
-        print('Not found last crawling : '+str(crawlingcheck))
-    print('crawlingcheck is : '+str(crawlingcheck))
-    ownremove(None, 'CrawlingUrl', netip, netport)
-    try:
-        if crawlingcheck:
-            # cc = re.compile(r'\'url\': \'(.*?)\'')
-            # url_yu = re.findall(cc, str(crawlingcheck))
-            url_yu = crawlingcheck['url']
-            print(url_yu)
-            judge = get_content(url_yu, False, allproxies, None, netip, netport)
-            if judge:
-                if 'LWPCookieJar' in str(judge):
-                    thecookies = judge
-                    print('entering login pattern')
-                    get_content(url_yu, False, None, thecookies, netip, netport)
-                    if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
-                        getfollowers(url_yu, False, None, thecookies, netip, netport)
-                    if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
-                        if getfollowing(url_yu, False, None, thecookies, netip, netport):
-                            CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
-                            CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
-                            getfollowers(url_yu, False, None, thecookies, netip, netport)
-                else:
-                    #thecookies = None
+    if not onlyapi:
+        try:
+            crawlingcheck = checkcrawling('num', machinenum, netip, netport)
+        except UnboundLocalError:
+            crawlingcheck = False
+            print('Not found last crawling : '+str(crawlingcheck))
+        print('crawlingcheck is : '+str(crawlingcheck))
+        ownremove(None, 'CrawlingUrl', netip, netport)
+
+        try:
+            if crawlingcheck:
+                url_yu = crawlingcheck['url']
+                print(url_yu)
+                judge = get_content(url_yu, False, allproxies, None, netip, netport)
+                if judge:
+                        # get_content(url_yu, False, None, thecookies, netip, netport)
+                        # if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
+                        #     getfollowers(url_yu, False, None, thecookies, netip, netport)
+                        # if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
+                        #     if getfollowing(url_yu, False, None, thecookies, netip, netport):
+                        #         CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
+                        #         CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
+                        #         getfollowers(url_yu, False, None, thecookies, netip, netport)
+                #else:
                     if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
                         getfollowers(url_yu, True, allproxies, None, netip, netport)
                     if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
@@ -713,11 +875,9 @@ if __name__ == "__main__":
                             CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
                             CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
                             getfollowers(url_yu, True, allproxies, None, netip, netport)
-        ownremove(url_yu, 'CrawlingUrl', netip, netport)
-    except NameError:
-        pass
-            # if checkcrawling('pagetype', 'followers', netip, netport):
-            #     getfollowers(str(url_yu).strip('[\']'), allproxies, netip, netport)
+            ownremove(url_yu, 'CrawlingUrl', netip, netport)
+        except NameError:
+            pass
 
     # try:
     #     thenew = pickyu(netip,netport)
@@ -727,35 +887,21 @@ if __name__ == "__main__":
     #
     thenew = True
     while thenew:
+        #time.sleep(random.randint(1, 3))
         try:
             thenew = pickyu(netip, netport)
             print(thenew)
         except TypeError:
             print('TypeError  : the NewUrl is empty')
             break
-        #print('exit')
-    #for list in lists:
         try:
-            #url_yu = re.findall(yu, thenew)
-            #print(url_yu)
-            # print(url_yu)
-            Savedb(thenew, thenew, 'url', 'CrawlingUrl', netip, netport)  # 要改
-            CrawlingNum(thenew, str(machinenum), 'url', 'num', netip, netport)
+            Savedb(thenew, thenew, 'url', 'CrawlingUrl', netip, netport)
+            if not onlyapi:
+                CrawlingNum(thenew, str(machinenum), 'url', 'num', netip, netport)
             owndelete(thenew, 'NewUrl', netip, netport)
-            # url_yu = re.findall(yu, str(list))
-            # time.sleep(random.randint(1, 5))
-
-            judge = get_content(thenew, True, allproxies, thecookies, netip, netport)
-
-            if judge:
-                if 'LWPCookieJar' in str(judge):
-                    thecookies = judge
-                    print('entering login pattern')
-                    get_content(thenew, False, None, thecookies, netip, netport)
-                    if getfollowing(thenew, False, None, thecookies, netip, netport):
-                        CrawlingNum(thenew, '1', 'url', 'pagenum', netip, netport)
-                        getfollowers(thenew, False, None, thecookies, netip, netport)
-                else:
+            judge = get_content(thenew,  True, allproxies, thecookies, netip, netport)
+            if not onlyapi:
+                if 'not' not in str(judge):
                     if getfollowing(thenew, True, allproxies, None, netip, netport):
                         CrawlingNum(thenew, '1', 'url', 'pagenum', netip, netport)
                         getfollowers(thenew, True, allproxies, None, netip, netport)
