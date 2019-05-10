@@ -31,16 +31,21 @@ lastfile='../lastcookiepath.txt'
 neednum = str(nowTime)
 cookiepath='../owncookies/cookies'+str(neednum)+'.txt'
 
-ua = UserAgent()
-browverrule = re.compile(r'(?<=Chrome/)[0-9]{2}')
-while True:
-    theusingua = ua.chrome
-    browver = re.search(browverrule,str(theusingua))
-    if int(browver.group(0)) > 32:
-        break
-syspath=sys.path[0]
+
+def forgeua():
+    ua = UserAgent()
+    browverrule = re.compile(r'(?<=Chrome/)[0-9]{2}')
+    while True:
+        theusingua = ua.chrome
+        browver = re.search(browverrule, str(theusingua))
+        if int(browver.group(0)) > 33:
+            break
+    print(theusingua)
+    return theusingua
+syspath = sys.path[0]
 os.chdir(sys.path[0])
 val = json.load(open('setting.json', encoding='utf-8'))
+valprivate = json.load(open('../private.json', encoding='utf-8'))
 try:
     prival = json.load(open('../private.json', encoding='utf-8'))
 except OSError as err:
@@ -53,10 +58,14 @@ except OSError as err:
         }
     }
     #prival["flippagenum"] = random.randint(0, 4)
+theusingua = forgeua()
 nowproxy = val['masterproxies']
-chooseproxy = nowproxy[random.randint(0, len(nowproxy)-3)]
+chooseproxy = nowproxy[random.randint(0, len(nowproxy)-1)]
 print('the proxy which was chosed is '+str(chooseproxy)+' ')
-univerindex = len(val['univer_url'])#random.randint(0, len(val['univer_url'])-1)
+try:
+    targetindex = len(valprivate['target_url'])#random.randint(0, len(val['univer_url'])-1)
+except KeyError:
+    targetindex = len(val['target_url'])
 COMMON_headers = {
             'Host': 'www.zhihu.com',
             'User-Agent': theusingua
@@ -120,8 +129,8 @@ def mypost(session, url, params, proxy=chooseproxy):
         'Content-Length': '26',
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
         'Host': 'www.zhihu.com',
-        'Referer':url,
-        'TE':'Trailers',
+        'Referer': url,
+        #'TE': 'Trailers',
         'User-Agent': theusingua,
         'X-Requested-With': 'XMLHttpRequest',
         'X-Xsrftoken': dictcookie['_xsrf']

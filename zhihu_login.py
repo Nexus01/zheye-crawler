@@ -24,26 +24,14 @@ import os
 import sys
 syspath=sys.path[0]
 os.chdir(sys.path[0])
-with open('../lastcookiepath.txt','rt',encoding='utf-8') as infosource:
+with open('../lastcookiepath.txt', 'rt', encoding='utf-8') as infosource:
     lines = infosource.readlines()
     orifromtxt= lines[-1]
-accsec = json.load(open("../private.json",encoding='utf-8'))
-sel = random.randint(0, len(accsec['account']) - 1)
-acc = accsec['account'][sel]
-sec = accsec['secret'][sel]
+accsec = json.load(open("../private.json", encoding='utf-8'))
+#sel = random.randint(0, len(accsec['account']) - 1)
+#acc = accsec['account'][sel]
+#sec = accsec['secret'][sel]
 
-loadornot = True
-try:
-    with open(utils.lastfile, 'rt',encoding='utf-8') as infosource:
-        lines = infosource.readlines()
-        orifromtxt = lines[-1]
-except NameError as ne:
-    orifromtxt = 'not exist'
-    loadornot = False
-except FileNotFoundError as fe:
-    orifromtxt = 'not exist'
-    loadornot = False
-print('loadornot is ' + str(loadornot))
 class ZhihuAccount(object):
 
     def __init__(self, username: str = None, password: str = None):
@@ -68,7 +56,7 @@ class ZhihuAccount(object):
         }
         self.session.headers['User-Agent'] = utils.COMMON_headers['User-Agent']
         print('the user-agent is ' + utils.COMMON_headers['User-Agent'])
-        print('the cookie.txt selected is '+str(orifromtxt))
+
         self.session.cookies = cookiejar.LWPCookieJar(filename=orifromtxt)
 
     def login(self, captcha_lang: str = 'en', load_cookies: bool = True):
@@ -78,13 +66,15 @@ class ZhihuAccount(object):
         :param load_cookies: 是否读取上次保存的 Cookies
         :return: bool
         """
+
         if load_cookies and self.load_cookies():
             print('读取 Cookies 文件')
+            print('the cookie.txt selected is ' + str(orifromtxt))
             if self.check_login():
                 print('登录成功')
-                with open(utils.lastfile, 'wt',encoding='utf-8') as tempname:
+                with open(utils.lastfile, 'wt', encoding='utf-8') as tempname:
                     tempname.writelines(utils.cookiepath)
-                personinfo = utils.get_links(self.session,utils.val['apime_url'])
+                personinfo = utils.get_links(self.session, utils.val['apime_url'])
                 if personinfo is not str:
                     try:
                         print(personinfo.text)
@@ -265,6 +255,20 @@ class ZhihuAccount(object):
 
 
 if __name__ == '__main__':
-    account = ZhihuAccount(acc, sec)
-    print(acc +' ' +sec)
-    account.login(captcha_lang='en', load_cookies= loadornot)
+    account = ZhihuAccount('', '')
+    #print(acc +' ' +sec)
+    loadornot = True
+    try:
+        with open(utils.lastfile, 'rt', encoding='utf-8') as infosource:
+            lines = infosource.readlines()
+            orifromtxt = lines[-1]
+    except NameError as ne:
+        orifromtxt = 'not exist'
+        loadornot = False
+    except FileNotFoundError as fe:
+        orifromtxt = 'not exist'
+        loadornot = False
+    print('loadornot is ' + str(loadornot))
+    account.login(captcha_lang='en', load_cookies=loadornot)
+
+

@@ -17,9 +17,9 @@ from PIL import Image
 import cnn_test_en
 import cnn_test_en_cla
 import tensorflow as tf
-onlyapi = False
-lightout = False
-threshold = 50
+# onlyapi = False
+# lightout = False
+# threshold = 10000
 
 
 def forgeua():
@@ -38,20 +38,20 @@ def owndelete(thevalue, valuename, *ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']
     mycol = mydb[valuename]
-    myquery = {valuename: thevalue}
+    myquery = {'url': thevalue}
     mycol.delete_one(myquery)
 
 def ownremove(thevalue,valuename, *ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']  # shujuku
     mycol = mydb[valuename]  # jihe
-    myquery = {valuename: thevalue}
+    myquery = {'url': thevalue}
     mycol.delete_many(myquery)
 
 def checktime(begintime,endtime):
@@ -81,7 +81,7 @@ def check(urltoken, urlcol, *ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']
     mycol = mydb[urlcol]
     myquery = {'url': urltoken}
@@ -95,7 +95,7 @@ def checkcrawling(thekey,thevalue,*ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']
     mycol = mydb['CrawlingUrl']
     myquery = {thekey: str(thevalue)}
@@ -109,10 +109,10 @@ def checkcrawling2(thekey,thevalue,thekey2,thevalue2,*ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']
     mycol = mydb['CrawlingUrl']
-    myquery = {thekey: str(thevalue),thekey2:str(thevalue2)}
+    myquery = {thekey: str(thevalue), thekey2: str(thevalue2)}
     mydoc = mycol.find(myquery)
     checkc = {}
     for crawlingc in mydoc:
@@ -129,14 +129,14 @@ def pickyu(ip, port):
 
 
 
-def Savedb(thekey, thevalue, keyname, valuename, *ipport):
+def Savedb(thekey, thevalue, keyname, colname, *ipport):
     if len(ipport) == 2:
         myclient = pymongo.MongoClient('mongodb://' + ipport[0] + ':' + ipport[1] + '/')
     else:
-        myclient = pymongo.MongoClient("mongodb://localhost:27017/")  # 远程服务器的IP和端口
+        myclient = pymongo.MongoClient('mongodb://localhost:27017/')  # 远程服务器的IP和端口
     mydb = myclient['zhihu']  # shujuku
-    mycol = mydb[valuename]  # jihe
-    setvalue = {valuename: thevalue}
+    mycol = mydb[colname]  # jihe
+    setvalue = {keyname: thevalue}
     mycol.update_one({keyname: thekey}, {'$set': setvalue}, upsert=True)
     # db.NewUrl.updateOne({'NewUrl': 'luosheng'}, {'$set': {'url': 'luosheng'}}, upsert=true)
     return
@@ -158,8 +158,14 @@ def file_name(file_dir):
                 L.append(os.path.join(root, file))
     return L
 
-def gettopics(url, fakeua, fullproxies, needcookies):
+def gettopics(url, fakeua, fullproxies, needcookies, *ipport):
     global originua
+    if len(ipport) == 2:
+        remoteip = ipport[0]
+        remoteport = ipport[1]
+    else:
+        remoteip = '127.1'
+        remoteport = '27017'
     headers = {
         'Host': 'www.zhihu.com'
         #'User-Agent': forgeua()
@@ -230,7 +236,12 @@ def gettopics(url, fakeua, fullproxies, needcookies):
     print(topic_list)
     print(num_list)
     topics = dict(map(lambda x, y: [x, y], topic_list, num_list))
-    Savedb(url, topics, 'url', 'topics')
+    setvalue = {'topics': topics}
+    myclient = pymongo.MongoClient('mongodb://' + remoteip + ':' + remoteport + '/')  # 远程服务器的IP和端口
+    mydb = myclient['zhihu']
+    mycol = mydb['userinfo']
+    mycol.update_one({'url': url}, {'$set': setvalue}, upsert=True)
+    #Savedb(url, topics, 'topics', 'userinfo')
 
 
 def getfollowing(url, fakeua, fullproxies, needcookies, *ipport):
@@ -542,7 +553,7 @@ def hackcapt(usa,hackpro):
     #valapi = json.loads(resp.content, encoding='utf-8')
     while True:
         try:
-            resp0 = session.get(apitopurl,headers=apiheaders,proxies=hackpro)
+            resp0 = session.get(apitopurl, headers=apiheaders, proxies=hackpro)
             if 'error' not in str(resp0.content):
                 print(json.loads(resp0.content))
                 break
@@ -716,21 +727,27 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
         else:
             business = 'unknown'
 
-        if stdlist[0] in str(location).strip('[\']'):
-            locabool = True
-            location = str(location).replace('\'', '')
-            location = str(location).strip('[]')
-            print('location: ' + location)
-        if stdlist[0] in str(business).strip('[\']'):
-            busibool = True
-            business = str(business).replace('\'', '')
-            business = str(business).strip('[]')
-            print('business: ' + business)
-        if stdlist[0] in str(employment).strip('[\']'):
-            employbool = True
-            employment = str(employment).replace('\'', '')
-            employment = str(employment).strip('[\']')
-            print('employment: ' + employment)
+        for schkey in stdlist:
+            if schkey in str(location).strip('[\']'):
+                locabool = True
+                location = str(location).replace('\'', '')
+                location = str(location).strip('[]')
+                print('location: ' + location)
+                break
+        for schkey in stdlist:
+            if schkey in str(business).strip('[\']'):
+                busibool = True
+                business = str(business).replace('\'', '')
+                business = str(business).strip('[]')
+                print('business: ' + business)
+                break
+        for schkey in stdlist:
+            if schkey in str(employment).strip('[\']'):
+                employbool = True
+                employment = str(employment).replace('\'', '')
+                employment = str(employment).strip('[\']')
+                print('employment: ' + employment)
+                break
         for schkey in stdlist:
             if schkey in str(education).strip('[\']'):
                 edubool = True
@@ -797,30 +814,42 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
                 numofarticles = int(numofarticles)
             except ValueError:
                 numofarticles = 0
-            Savedb(url, id, 'url', 'id')
-            Savedb(url, name, 'url', 'name')
-            Savedb(url, gender, 'url', 'gender')
-            Savedb(url, headline, 'url', 'headline')
-            Savedb(url, description, 'url', 'description')
-            Savedb(url, location, 'url', 'location')
-            Savedb(url, education, 'url', 'education')
-            Savedb(url, employment, 'url', 'employment')
-            Savedb(url, business, 'url', 'business')
-            Savedb(url, numoffollower, 'url', 'numoffollower')
-            Savedb(url, numoffollowing, 'url', 'numoffollowing')
-            Savedb(url, numofanswer, 'url', 'numofanswer')
-            Savedb(url, numofquestion, 'url', 'numofquestion')
-            Savedb(url, numofarticles, 'url', 'numofarticles')
-            Savedb(url, favorite_count, 'url', 'favorite_count')
-            Savedb(url, favorited_count, 'url', 'favorited_count')
-            Savedb(url, voteup_count, 'url', 'voteup_count')
-            Savedb(url, thanked_count, 'url', 'thanked_count')
-            gettopics(url, fakeua, allproxies, needcookies)
+
+            # Savedb(url, id, 'id', 'userinfo')
+            # Savedb(url, name, 'name', 'userinfo')
+            # Savedb(url, gender, 'gender', 'userinfo')
+            # Savedb(url, headline, 'headline', 'userinfo')
+            # Savedb(url, description, 'description', 'userinfo')
+            # Savedb(url, location, 'location', 'userinfo')
+            # Savedb(url, education, 'education', 'userinfo')
+            # Savedb(url, employment, 'employment', 'userinfo')
+            # Savedb(url, business, 'business', 'userinfo')
+            # Savedb(url, numoffollower, 'numoffollower', 'userinfo')
+            # Savedb(url, numoffollowing, 'numoffollowing', 'userinfo')
+            # Savedb(url, numofanswer, 'numofanswer', 'userinfo')
+            # Savedb(url, numofquestion, 'numofquestion', 'userinfo')
+            # Savedb(url, numofarticles, 'numofarticles', 'userinfo')
+            # Savedb(url, favorite_count, 'favorite_count', 'userinfo')
+            # Savedb(url, favorited_count, 'favorited_count', 'userinfo')
+            # Savedb(url, voteup_count,  'voteup_count', 'userinfo')
+            # Savedb(url, thanked_count, 'thanked_count', 'userinfo')
+            setvalue = {'id': id, 'name': name, 'gender': gender, 'headline': headline, 'description': description,
+                        'location': location, 'education': education, 'employment': employment, 'business': business,
+                        'numoffollower': numoffollower, 'numoffollowing': numoffollowing, 'numofanswer': numofanswer,
+                        'numofquestion': numofquestion, 'numofarticles': numofarticles, 'favorite_count': favorite_count,
+                        'favorited_count': favorited_count, 'voteup_count': voteup_count, 'thanked_count': thanked_count}
+            myclient = pymongo.MongoClient('mongodb://' + remoteip + ':' + remoteport + '/')
+            mydb = myclient['zhihu']
+            mycol = mydb['userinfo']
+            mycol.update_one({'url': url}, {'$set': setvalue}, upsert=True)
+            gettopics(url, fakeua, allproxies, needcookies, remoteip, remoteport)
             judge = 'chosed'
+            print('Putting it into SelectUrl')
+            Savedb(url, url, 'url', 'SelectUrl', remoteip, remoteport)
         else:
             judge = 'not chosed'
             print('not be chosed')
-        Savedb(url, url, 'url', 'CrawledUrl', remoteip, remoteport)
+            Savedb(url, url, 'url', 'CrawledUrl', remoteip, remoteport)
     except KeyError:
         print('Putting it into CancelUrl')
         Savedb(url, url, 'url', 'CancelUrl', remoteip, remoteport)
@@ -837,6 +866,9 @@ if __name__ == "__main__":
     os.chdir(sys.path[0])
     with open('../private.json', 'rt', encoding='utf-8') as valjson:
         val = json.load(valjson)
+    onlyapi = val['onlyapi']
+    lightout = val['lightout']
+    threshold = val['threshold']
     machinenum = str(val['machinenum'])
     print(machinenum)
     stdlist = val['stdlist']
@@ -856,7 +888,7 @@ if __name__ == "__main__":
         try:
             if crawlingcheck:
                 url_yu = crawlingcheck['url']
-                print(url_yu)
+                print('crawlingcheck url is '+url_yu)
                 judge = get_content(url_yu, False, allproxies, None, netip, netport)
                 if judge:
                         # get_content(url_yu, False, None, thecookies, netip, netport)
@@ -868,9 +900,12 @@ if __name__ == "__main__":
                         #         CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
                         #         getfollowers(url_yu, False, None, thecookies, netip, netport)
                 #else:
+                    print('entering continue crawling')
                     if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
+                        print('entering followers')
                         getfollowers(url_yu, True, allproxies, None, netip, netport)
                     if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
+                        print('entering following')
                         if getfollowing(url_yu, True, allproxies, None, netip, netport):
                             CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
                             CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
@@ -896,9 +931,10 @@ if __name__ == "__main__":
             break
         try:
             Savedb(thenew, thenew, 'url', 'CrawlingUrl', netip, netport)
+            owndelete(thenew, 'NewUrl', netip, netport)
             if not onlyapi:
                 CrawlingNum(thenew, str(machinenum), 'url', 'num', netip, netport)
-            owndelete(thenew, 'NewUrl', netip, netport)
+
             judge = get_content(thenew,  True, allproxies, thecookies, netip, netport)
             if not onlyapi:
                 if 'not' not in str(judge):

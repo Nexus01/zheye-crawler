@@ -1,22 +1,13 @@
 {
     "user": "unknown",
-    "proxy_on": true,
+    "proxy_on": false,
     "masterproxies": [
-        null,
-        {"http": "socks5://127.0.0.1:1060", "https": "socks5://127.0.0.1:1060"},
-        {"http": "socks5://127.0.0.1:1070", "https": "socks5://127.0.0.1:1070"}
+        null
     ],
-    "proxies": [
-        null,
-        {"http": "socks5://127.0.0.1:1080", "https": "socks5://127.0.0.1:1080"},
-        {"http": "socks5://127.0.0.1:1070", "https": "socks5://127.0.0.1:1070"}
-    ],
-    "account":"default",
-    "secret":"default",
     "mainpage_url":"https://www.zhihu.com",
     "account_url":"https://www.zhihu.com/settings/account",
     "apime_url":"https://www.zhihu.com/api/v4/me",
-    "univer_url":[
+    "target_url":[
         "https://www.zhihu.com/topic/19571466/followers",
         "https://www.zhihu.com/topic/19583707/followers",
         "https://www.zhihu.com/topic/19575211/followers",
@@ -51,7 +42,7 @@
         "https://www.zhihu.com/topic/20013347/followers",
         "https://www.zhihu.com/topic/20005435/followers"
     ],
-    "univer_name":[
+    "target_name":[
         "Fudan University",
         "Tongji University",
         "Shanghai Jiao Tong University",
@@ -88,14 +79,6 @@
     ],
     "thread_num": 3,
     "sleep": 1,
-    "redis": {
-        "host": "localhost",
-        "port": 6379
-    },
-    "mongodb": {
-        "host": "localhost",
-        "port": 27000
-    },
     "dbnamenet":"zhihu",
-    "colnamenet":"domainid"
+    "colnamenet":"NewUrl"
 }
