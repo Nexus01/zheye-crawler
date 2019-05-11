@@ -937,7 +937,7 @@ if __name__ == "__main__":
 
             judge = get_content(thenew,  True, allproxies, thecookies, netip, netport)
             if not onlyapi:
-                if 'not' not in str(judge):
+                if judge and ('not' not in str(judge)):
                     if getfollowing(thenew, True, allproxies, None, netip, netport):
                         CrawlingNum(thenew, '1', 'url', 'pagenum', netip, netport)
                         getfollowers(thenew, True, allproxies, None, netip, netport)
