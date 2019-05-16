@@ -17,7 +17,8 @@ import requests
 from requests import HTTPError, URLRequired
 from requests.exceptions import RequestException
 import random
-from fake_useragent import UserAgent
+#from fake_useragent import UserAgent
+from mock_useragent import MockUserAgent
 import datetime
 import json
 import brotli
@@ -33,13 +34,16 @@ cookiepath='../owncookies/cookies'+str(neednum)+'.txt'
 
 
 def forgeua():
-    ua = UserAgent()
+    ua = MockUserAgent()
     browverrule = re.compile(r'(?<=Chrome/)[0-9]{2}')
     while True:
-        theusingua = ua.chrome
+        theusingua = ua.random_chrome
         browver = re.search(browverrule, str(theusingua))
-        if int(browver.group(0)) > 33:
-            break
+        try:
+            if int(browver.group(0)) > 33:
+                break
+        except AttributeError:
+            continue
     print(theusingua)
     return theusingua
 syspath = sys.path[0]

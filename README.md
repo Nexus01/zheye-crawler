@@ -68,7 +68,7 @@ is like below:<br>
   "the followers page url of target_name, you can run `gaintopicurl.py` to generate it after you fill the target_name"<br>
  ] <br>
 
-###the order of the whole project is
+the order of the whole project is
 >modify the `private.json`
 >> `python3 gaintopicurl.py`
 >>>`python3 Master.py`

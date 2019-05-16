@@ -10,26 +10,27 @@ from bs4 import BeautifulSoup
 import pymongo
 import os
 import json
-from fake_useragent import UserAgent
+#from fake_useragent import UserAgent
 import sys
 import base64
 from PIL import Image
 import cnn_test_en
 import cnn_test_en_cla
 import tensorflow as tf
-# onlyapi = False
-# lightout = False
-# threshold = 10000
+from mock_useragent import MockUserAgent
 
 
 def forgeua():
-    ua = UserAgent()
+    ua = MockUserAgent()
     browverrule = re.compile(r'(?<=Chrome/)[0-9]{2}')
     while True:
-        theusingua = ua.chrome
+        theusingua = ua.random_chrome
         browver = re.search(browverrule, str(theusingua))
-        if int(browver.group(0)) > 33:
-            break
+        try:
+            if int(browver.group(0)) > 33:
+                break
+        except AttributeError:
+            continue
     print(theusingua)
     return theusingua
 
