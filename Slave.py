@@ -113,7 +113,7 @@ def checkcrawling2(thekey,thevalue,thekey2,thevalue2,*ipport):
         myclient = pymongo.MongoClient('mongodb://localhost:27017/')
     mydb = myclient['zhihu']
     mycol = mydb['CrawlingUrl']
-    myquery = {thekey: str(thevalue), thekey2: str(thevalue2)}
+    myquery = {thekey: str(thevalue), thekey2: thevalue2}
     mydoc = mycol.find(myquery)
     checkc = {}
     for crawlingc in mydoc:
@@ -713,6 +713,12 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
         business = re.findall(info, str(busi))
         education = re.findall(info, str(edu))
         employment = re.findall(info, str(employ))
+
+        if location:
+            location = location
+        else:
+            location = 'unknown'
+
         if education:
             education = education
         else:
@@ -816,24 +822,6 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
             except ValueError:
                 numofarticles = 0
 
-            # Savedb(url, id, 'id', 'userinfo')
-            # Savedb(url, name, 'name', 'userinfo')
-            # Savedb(url, gender, 'gender', 'userinfo')
-            # Savedb(url, headline, 'headline', 'userinfo')
-            # Savedb(url, description, 'description', 'userinfo')
-            # Savedb(url, location, 'location', 'userinfo')
-            # Savedb(url, education, 'education', 'userinfo')
-            # Savedb(url, employment, 'employment', 'userinfo')
-            # Savedb(url, business, 'business', 'userinfo')
-            # Savedb(url, numoffollower, 'numoffollower', 'userinfo')
-            # Savedb(url, numoffollowing, 'numoffollowing', 'userinfo')
-            # Savedb(url, numofanswer, 'numofanswer', 'userinfo')
-            # Savedb(url, numofquestion, 'numofquestion', 'userinfo')
-            # Savedb(url, numofarticles, 'numofarticles', 'userinfo')
-            # Savedb(url, favorite_count, 'favorite_count', 'userinfo')
-            # Savedb(url, favorited_count, 'favorited_count', 'userinfo')
-            # Savedb(url, voteup_count,  'voteup_count', 'userinfo')
-            # Savedb(url, thanked_count, 'thanked_count', 'userinfo')
             setvalue = {'id': id, 'name': name, 'gender': gender, 'headline': headline, 'description': description,
                         'location': location, 'education': education, 'employment': employment, 'business': business,
                         'numoffollower': numoffollower, 'numoffollowing': numoffollowing, 'numofanswer': numofanswer,
@@ -857,7 +845,6 @@ def get_content(url, fakeua , fullproxies,needcookies, *ipport):
         judge = False
     return judge
 
-    # www网页爬取
 
 
 if __name__ == "__main__":
@@ -879,7 +866,7 @@ if __name__ == "__main__":
     thecookies = None
     if not onlyapi:
         try:
-            crawlingcheck = checkcrawling('num', machinenum, netip, netport)
+            crawlingcheck = checkcrawling2('num', machinenum, 'pagetype', {'$exists':True}, netip, netport)
         except UnboundLocalError:
             crawlingcheck = False
             print('Not found last crawling : '+str(crawlingcheck))
@@ -892,20 +879,11 @@ if __name__ == "__main__":
                 print('crawlingcheck url is '+url_yu)
                 judge = get_content(url_yu, False, allproxies, None, netip, netport)
                 if judge:
-                        # get_content(url_yu, False, None, thecookies, netip, netport)
-                        # if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
-                        #     getfollowers(url_yu, False, None, thecookies, netip, netport)
-                        # if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
-                        #     if getfollowing(url_yu, False, None, thecookies, netip, netport):
-                        #         CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
-                        #         CrawlingNum(url_yu, '1', 'url', 'pagenum', netip, netport)
-                        #         getfollowers(url_yu, False, None, thecookies, netip, netport)
-                #else:
                     print('entering continue crawling')
-                    if checkcrawling2('pagetype', 'followers', 'url', url_yu, netip, netport):
+                    if checkcrawling2('pagetype', 'followers', 'url', str(url_yu), netip, netport):
                         print('entering followers')
                         getfollowers(url_yu, True, allproxies, None, netip, netport)
-                    if checkcrawling2('pagetype', 'following', 'url', url_yu, netip, netport):
+                    if checkcrawling2('pagetype', 'following', 'url', str(url_yu), netip, netport):
                         print('entering following')
                         if getfollowing(url_yu, True, allproxies, None, netip, netport):
                             CrawlingNum(url_yu, 'followers', 'url', 'pagetype', netip, netport)
@@ -915,12 +893,6 @@ if __name__ == "__main__":
         except NameError:
             pass
 
-    # try:
-    #     thenew = pickyu(netip,netport)
-    # except TypeError:
-    #     print('FirstTypeError : the NewUrl is empty')
-    #     thenew = None
-    #
     thenew = True
     while thenew:
         #time.sleep(random.randint(1, 3))
@@ -935,16 +907,14 @@ if __name__ == "__main__":
             owndelete(thenew, 'NewUrl', netip, netport)
             if not onlyapi:
                 CrawlingNum(thenew, str(machinenum), 'url', 'num', netip, netport)
-
             judge = get_content(thenew,  True, allproxies, thecookies, netip, netport)
             if not onlyapi:
                 if judge and ('not' not in str(judge)):
                     if getfollowing(thenew, True, allproxies, None, netip, netport):
                         CrawlingNum(thenew, '1', 'url', 'pagenum', netip, netport)
                         getfollowers(thenew, True, allproxies, None, netip, netport)
-            ownremove(thenew, 'CrawlingUrl', netip, netport)
         except urllib.error.HTTPError:
             continue
-
+        ownremove(thenew, 'CrawlingUrl', netip, netport)
 
 
